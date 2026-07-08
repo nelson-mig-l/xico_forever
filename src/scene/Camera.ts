@@ -3,19 +3,24 @@ import { Car } from "../player/Car";
 
 export class Camera {
   public camera: UniversalCamera;
-  private offset = new Vector3(0, 35, -25);
+  private height = 35;
+  private distanceBehind = 25;
   
   constructor(public scene: Scene, public target: Car) {
-    // Initialize with the offset position so it doesn't look at its own position
-    this.camera = new UniversalCamera("mainCamera", this.offset.clone(), scene);
+    const initialPos = new Vector3(0, this.height, -this.distanceBehind);
+    this.camera = new UniversalCamera("mainCamera", initialPos, scene);
     this.camera.setTarget(Vector3.Zero());
   }
 
   update(dt: number) {
     const targetPos = this.target.mesh.position.clone();
     
+    // Calculate desired position: behind the car and up
+    const backward = this.target.forward.scale(-this.distanceBehind);
+    const desiredPos = targetPos.add(backward);
+    desiredPos.y += this.height;
+
     // Smooth follow
-    const desiredPos = targetPos.add(this.offset);
     this.camera.position = Vector3.Lerp(this.camera.position, desiredPos, dt * 5);
     
     // Look slightly ahead of car
