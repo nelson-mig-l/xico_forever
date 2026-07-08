@@ -23,7 +23,7 @@ export class Game {
 
   constructor(
     public canvas: HTMLCanvasElement, 
-    private setScore: (score: number) => void,
+    private setScore: (score: number, policeCount: number, destroyedCount: number) => void,
     private setGameOver: (state: boolean, finalScore: number) => void
   ) {
     this.engine = new Engine(canvas, true);
@@ -67,7 +67,7 @@ export class Game {
     this.chunkGenerator.update();
 
     this.score += dt * 10;
-    this.setScore(this.score);
+    this.setScore(this.score, this.policeManager.policeCars.length, this.policeManager.destroyedCount);
   }
 
   gameOver() {

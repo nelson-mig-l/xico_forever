@@ -10,6 +10,7 @@ export class PoliceCar {
   public maxSpeed: number = 26; // Slightly faster than player
   public acceleration: number = 18;
   public turnSpeed: number = 3.0;
+  public isDestroyed: boolean = false;
 
   constructor(public scene: Scene, position: Vector3) {
     this.mesh = MeshBuilder.CreateBox("police", { width: 1.6, height: 0.8, depth: 3.2 }, scene);
@@ -31,6 +32,49 @@ export class PoliceCar {
     siren.position.y = 0.5;
     siren.material = sirenMat;
     siren.parent = this.mesh;
+
+    this.mesh.onCollide = (collidedMesh) => {
+      if (collidedMesh && (collidedMesh.name.includes("prop") || collidedMesh.name.includes("police"))) {
+        this.explode();
+      }
+    };
+  }
+
+  explode() {
+    if (this.isDestroyed) return;
+    this.isDestroyed = true;
+
+    // Create explosion effect
+    const explosion = MeshBuilder.CreateSphere("explosion", { diameter: 3 }, this.scene);
+    explosion.position = this.mesh.position.clone();
+    
+    const mat = new StandardMaterial("expMat", this.scene);
+    mat.emissiveColor = new Color3(1, 0.4, 0);
+    mat.diffuseColor = new Color3(1, 0.2, 0);
+    mat.alpha = 0.8;
+    mat.transparencyMode = StandardMaterial.MATERIAL_ALPHABLEND;
+    explosion.material = mat;
+    
+    let scale = 1;
+    let alpha = 0.8;
+    
+    const observer = this.scene.onBeforeRenderObservable.add(() => {
+        const dt = this.scene.getEngine().getDeltaTime() / 1000;
+        scale += dt * 15;
+        explosion.scaling.setAll(scale);
+        alpha -= dt * 2;
+        mat.alpha = Math.max(0, alpha);
+        
+        if (alpha <= 0) {
+            explosion.dispose();
+            this.scene.onBeforeRenderObservable.removeCallback(observer);
+        }
+    });
+
+    // Hide mesh and disable collisions
+    this.mesh.isVisible = false;
+    this.mesh.checkCollisions = false;
+    this.mesh.getChildMeshes().forEach(m => m.isVisible = false);
   }
 
   get forward(): Vector3 {

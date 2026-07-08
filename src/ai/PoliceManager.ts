@@ -5,6 +5,7 @@ import { Game } from "../Game";
 
 export class PoliceManager {
   public policeCars: PoliceCar[] = [];
+  public destroyedCount: number = 0;
   private spawnTimer: number = 0;
   private difficultyTimer: number = 0;
   
@@ -26,6 +27,14 @@ export class PoliceManager {
 
     for (let i = this.policeCars.length - 1; i >= 0; i--) {
       const police = this.policeCars[i];
+      
+      if (police.isDestroyed) {
+        police.dispose();
+        this.policeCars.splice(i, 1);
+        this.destroyedCount++;
+        continue;
+      }
+
       police.update(dt, this.target);
 
       const dist = Vector3.Distance(police.mesh.position, this.target.mesh.position);

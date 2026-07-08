@@ -4,14 +4,22 @@ import { Game } from './Game';
 export default function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scoreRef = useRef<HTMLDivElement>(null);
+  const policeCountRef = useRef<HTMLDivElement>(null);
+  const destroyedCountRef = useRef<HTMLDivElement>(null);
   const [gameOver, setGameOver] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
 
   useEffect(() => {
     if (canvasRef.current) {
-      const game = new Game(canvasRef.current, (score) => {
+      const game = new Game(canvasRef.current, (score, policeCount, destroyedCount) => {
         if (scoreRef.current) {
           scoreRef.current.innerText = `SCORE: ${Math.floor(score)}`;
+        }
+        if (policeCountRef.current) {
+          policeCountRef.current.innerText = `POLICE: ${policeCount}`;
+        }
+        if (destroyedCountRef.current) {
+          destroyedCountRef.current.innerText = `DESTROYED: ${destroyedCount}`;
         }
       }, (state, score) => {
         setGameOver(state);
@@ -31,6 +39,12 @@ export default function App() {
       
       <div ref={scoreRef} className="absolute top-4 left-4 text-white font-mono text-2xl font-bold select-none drop-shadow-md z-10 pointer-events-none">
         SCORE: 0
+      </div>
+      <div ref={policeCountRef} className="absolute top-12 left-4 text-red-500 font-mono text-xl font-bold select-none drop-shadow-md z-10 pointer-events-none">
+        POLICE: 0
+      </div>
+      <div ref={destroyedCountRef} className="absolute top-20 left-4 text-orange-400 font-mono text-xl font-bold select-none drop-shadow-md z-10 pointer-events-none">
+        DESTROYED: 0
       </div>
 
       {gameOver && (

@@ -83,6 +83,7 @@ export class ChunkGenerator {
     if (propMeshes.length > 0) {
         const mergedProp = Mesh.MergeMeshes(propMeshes, true, true, undefined, false, true);
         if (mergedProp) {
+            mergedProp.name = `prop_${key}`;
             mergedProp.material = this.propMaterial;
             mergedProp.parent = chunkNode;
             mergedProp.checkCollisions = true;
