@@ -25,6 +25,18 @@ export class Car {
     mat.diffuseColor = Color3.FromHexString("#2563eb"); // Blue-600
     mat.specularPower = 64;
     this.mesh.material = mat;
+
+    this.mesh.onCollideObservable.add((collidedMesh) => {
+      if (collidedMesh && !collidedMesh.isDisposed()) {
+        if (collidedMesh.name.includes("destructible")) {
+          if (collidedMesh.parent && collidedMesh.parent.name.includes("destructible")) {
+            if (!collidedMesh.parent.isDisposed()) collidedMesh.parent.dispose();
+          } else {
+            collidedMesh.dispose();
+          }
+        }
+      }
+    });
   }
 
   get forward(): Vector3 {
@@ -71,7 +83,7 @@ export class Car {
     // Move with collisions
     const moveVector = this.velocity.scale(dt);
     // Add fake gravity
-    moveVector.y = -0.5;
+    moveVector.y = 0;
     
     this.mesh.moveWithCollisions(moveVector);
 

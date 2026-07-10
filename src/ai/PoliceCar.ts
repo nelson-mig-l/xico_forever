@@ -11,6 +11,8 @@ export class PoliceCar {
   public acceleration: number = 18;
   public turnSpeed: number = 3.0;
   public isDestroyed: boolean = false;
+  public health: number = 3;
+  private lastCollisionTime: number = 0;
 
   constructor(public scene: Scene, position: Vector3) {
     this.mesh = MeshBuilder.CreateBox("police", { width: 1.6, height: 0.8, depth: 3.2 }, scene);
@@ -33,11 +35,39 @@ export class PoliceCar {
     siren.material = sirenMat;
     siren.parent = this.mesh;
 
-    this.mesh.onCollide = (collidedMesh) => {
-      if (collidedMesh && (collidedMesh.name.includes("prop") || collidedMesh.name.includes("police"))) {
-        this.explode();
+    this.mesh.onCollideObservable.add((collidedMesh) => {
+      if (collidedMesh && !collidedMesh.isDisposed()) {
+        if (collidedMesh.name.includes("building") || collidedMesh.name.includes("police")) {
+          const now = performance.now();
+          if (now - this.lastCollisionTime > 500) {
+            this.lastCollisionTime = now;
+            this.health--;
+            
+            // Flash white
+            const mat = this.mesh.material as StandardMaterial;
+            if (mat) {
+              const oldColor = mat.diffuseColor.clone();
+              mat.diffuseColor = Color3.White();
+              setTimeout(() => {
+                if (!this.isDestroyed && this.mesh.material) {
+                  mat.diffuseColor = oldColor;
+                }
+              }, 100);
+            }
+
+            if (this.health <= 0) {
+              this.explode();
+            }
+          }
+        } else if (collidedMesh.name.includes("destructible")) {
+          if (collidedMesh.parent && collidedMesh.parent.name.includes("destructible")) {
+            if (!collidedMesh.parent.isDisposed()) collidedMesh.parent.dispose();
+          } else {
+            collidedMesh.dispose();
+          }
+        }
       }
-    };
+    });
   }
 
   explode() {
@@ -107,7 +137,7 @@ export class PoliceCar {
       this.velocity = this.forward.scale(this.speed);
       
       const moveVector = this.velocity.scale(dt);
-      moveVector.y = -0.5; // Gravity
+      moveVector.y = 0; // Gravity
       this.mesh.moveWithCollisions(moveVector);
       this.mesh.position.y = 0.4;
     }

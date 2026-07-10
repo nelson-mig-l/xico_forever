@@ -1,0 +1,47 @@
+--- src/player/Car.ts
++++ src/player/Car.ts
+@@ -26,14 +26,14 @@
+     mat.specularPower = 64;
+     this.mesh.material = mat;
+ 
+-    this.mesh.onCollide = (collidedMesh) => {
+-      if (collidedMesh) {
++    this.mesh.onCollideObservable.add((collidedMesh) => {
++      if (collidedMesh && !collidedMesh.isDisposed()) {
+         if (collidedMesh.name.includes("destructible")) {
+           if (collidedMesh.parent && collidedMesh.parent.name.includes("destructible")) {
+-            collidedMesh.parent.dispose();
++            if (!collidedMesh.parent.isDisposed()) collidedMesh.parent.dispose();
+           } else {
+             collidedMesh.dispose();
+           }
+         }
+       }
+-    };
++    });
+   }
+ 
+--- src/ai/PoliceCar.ts
++++ src/ai/PoliceCar.ts
+@@ -33,16 +33,16 @@
+     siren.position.y = 0.5;
+     siren.parent = this.mesh;
+ 
+-    this.mesh.onCollide = (collidedMesh) => {
+-      if (collidedMesh) {
++    this.mesh.onCollideObservable.add((collidedMesh) => {
++      if (collidedMesh && !collidedMesh.isDisposed()) {
+         if (collidedMesh.name.includes("building") || collidedMesh.name.includes("police")) {
+           this.explode();
+         } else if (collidedMesh.name.includes("destructible")) {
+           if (collidedMesh.parent && collidedMesh.parent.name.includes("destructible")) {
+-            collidedMesh.parent.dispose();
++            if (!collidedMesh.parent.isDisposed()) collidedMesh.parent.dispose();
+           } else {
+             collidedMesh.dispose();
+           }
+         }
+       }
+-    };
++    });
+   }
