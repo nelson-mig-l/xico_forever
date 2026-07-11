@@ -1,0 +1,71 @@
+--- src/effects/EffectManager.ts
++++ src/effects/EffectManager.ts
+@@ -14,7 +14,7 @@
+   createExplosion(position: Vector3) {
+     const particleSystem = new ParticleSystem("explosion", 200, this.scene);
+     particleSystem.particleTexture = this.particleTexture;
+-    particleSystem.emitter = position;
++    particleSystem.emitter = position.clone();
+     particleSystem.minEmitBox = new Vector3(-1, 0, -1);
+     particleSystem.maxEmitBox = new Vector3(1, 1, 1);
+     
+@@ -60,7 +60,7 @@
+   createSparks(position: Vector3, normal: Vector3 = new Vector3(0, 1, 0)) {
+     const particleSystem = new ParticleSystem("sparks", 50, this.scene);
+     particleSystem.particleTexture = this.particleTexture;
+-    particleSystem.emitter = position;
++    particleSystem.emitter = position.clone();
+     
+     particleSystem.color1 = new Color4(1, 1, 0, 1);
+     particleSystem.color2 = new Color4(1, 0.5, 0, 1);
+@@ -89,7 +89,7 @@
+   createDust(position: Vector3) {
+     const particleSystem = new ParticleSystem("dust", 50, this.scene);
+     particleSystem.particleTexture = this.particleTexture;
+-    particleSystem.emitter = position;
++    particleSystem.emitter = position.clone();
+     
+     particleSystem.color1 = new Color4(0.8, 0.8, 0.8, 0.5);
+     particleSystem.color2 = new Color4(0.6, 0.6, 0.6, 0.2);
+@@ -115,6 +115,31 @@
+     particleSystem.start();
+   }
+ 
++  createDriftDust(emitter: Mesh | Vector3): ParticleSystem {
++    const particleSystem = new ParticleSystem("driftDust", 200, this.scene);
++    particleSystem.particleTexture = this.particleTexture;
++    particleSystem.emitter = emitter;
++    
++    particleSystem.color1 = new Color4(0.8, 0.8, 0.8, 0.3);
++    particleSystem.color2 = new Color4(0.6, 0.6, 0.6, 0.1);
++    particleSystem.colorDead = new Color4(0.4, 0.4, 0.4, 0);
++    
++    particleSystem.minSize = 0.5;
++    particleSystem.maxSize = 2.0;
++    
++    particleSystem.minLifeTime = 0.4;
++    particleSystem.maxLifeTime = 1.0;
++    
++    particleSystem.emitRate = 50;
++    particleSystem.blendMode = ParticleSystem.BLENDMODE_STANDARD;
++    
++    particleSystem.direction1 = new Vector3(-1, 0.1, -1);
++    particleSystem.direction2 = new Vector3(1, 0.5, 1);
++    
++    particleSystem.minEmitPower = 0.5;
++    particleSystem.maxEmitPower = 1.5;
++    return particleSystem;
++  }
++
+   private createFlash(position: Vector3) {
+     const flash = MeshBuilder.CreateSphere("flash", {diameter: 4}, this.scene);
+     flash.position = position.clone();
+@@ -181,7 +206,7 @@
+     ctx.fillStyle = gradient;
+     ctx.fillRect(0, 0, 64, 64);
+     
+-    return new Texture("data:image/png;base64," + canvas.toDataURL().split(",")[1], this.scene, false, false, Texture.NEAREST_SAMPLINGMODE, null, null, "data:image/png", true);
++    return Texture.CreateFromBase64String(canvas.toDataURL(), "particleTex", this.scene);
+   }
+ 
+   // Synthesize some simple sounds using Web Audio API

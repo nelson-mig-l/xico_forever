@@ -1,4 +1,5 @@
-import { Scene, MeshBuilder, Vector3, Quaternion, Mesh, StandardMaterial, Color3 } from "@babylonjs/core";
+import { Scene, MeshBuilder, Vector3, Quaternion, Mesh, StandardMaterial, Color3, TrailMesh, ParticleSystem } from "@babylonjs/core";
+import { EffectManager } from "../effects/EffectManager";
 
 export class Car {
   public mesh: Mesh;
@@ -12,8 +13,14 @@ export class Car {
   public driftFactor: number = 0.96; // Higher = more slidey
   
   public isCrashed: boolean = false;
+  
+  private trailLeft: TrailMesh;
+  private trailRight: TrailMesh;
+  private driftDustLeft: ParticleSystem;
+  private driftDustRight: ParticleSystem;
+  private skidSoundTimer: number = 0;
 
-  constructor(public scene: Scene) {
+  constructor(public scene: Scene, private effectManager: EffectManager) {
     this.mesh = MeshBuilder.CreateBox("car", { width: 1.6, height: 0.8, depth: 3.2 }, scene);
     this.mesh.position.y = 0.4;
     
@@ -30,13 +37,41 @@ export class Car {
       if (collidedMesh && !collidedMesh.isDisposed()) {
         if (collidedMesh.name.includes("destructible")) {
           if (collidedMesh.parent && collidedMesh.parent.name.includes("destructible")) {
-            if (!collidedMesh.parent.isDisposed()) collidedMesh.parent.dispose();
+            if (!collidedMesh.parent.isDisposed()) {
+                this.effectManager.createDust(collidedMesh.parent.position);
+                collidedMesh.parent.dispose();
+            }
           } else {
+            this.effectManager.createDust(collidedMesh.position);
             collidedMesh.dispose();
           }
         }
       }
     });
+
+    // Create skid marks (TrailMesh)
+    const trailMat = new StandardMaterial("trailMat", scene);
+    trailMat.diffuseColor = new Color3(0, 0, 0);
+    trailMat.emissiveColor = new Color3(0, 0, 0);
+    trailMat.specularColor = new Color3(0, 0, 0);
+    trailMat.alpha = 0.5;
+
+    const leftWheel = new Mesh("leftWheel", scene);
+    leftWheel.parent = this.mesh;
+    leftWheel.position = new Vector3(-0.6, -0.3, -1.2);
+
+    const rightWheel = new Mesh("rightWheel", scene);
+    rightWheel.parent = this.mesh;
+    rightWheel.position = new Vector3(0.6, -0.3, -1.2);
+
+    this.trailLeft = new TrailMesh("trailLeft", leftWheel, scene, 0.3, 60, true);
+    this.trailLeft.material = trailMat;
+    
+    this.trailRight = new TrailMesh("trailRight", rightWheel, scene, 0.3, 60, true);
+    this.trailRight.material = trailMat;
+
+    this.driftDustLeft = this.effectManager.createDriftDust(leftWheel);
+    this.driftDustRight = this.effectManager.createDriftDust(rightWheel);
   }
 
   get forward(): Vector3 {
@@ -65,7 +100,13 @@ export class Car {
   }
 
   update(dt: number) {
-    if (this.isCrashed) return;
+    if (this.isCrashed) {
+        this.trailLeft.stop();
+        this.trailRight.stop();
+        this.driftDustLeft.stop();
+        this.driftDustRight.stop();
+        return;
+    }
 
     // Arcade drift physics
     const currentForwardVelocity = this.forward.scale(this.speed);
@@ -89,11 +130,40 @@ export class Car {
 
     // Lock Y to prevent flying
     this.mesh.position.y = 0.4;
+
+    // Handle trails & effects
+    const lateralSpeed = lateralVelocity.length();
+    const isDrifting = lateralSpeed > 5.0 && Math.abs(this.speed) > 5;
+    
+    if (isDrifting) {
+        this.trailLeft.start();
+        this.trailRight.start();
+        if (!this.driftDustLeft.isStarted() || !this.driftDustLeft.isAlive()) {
+            this.driftDustLeft.start();
+            this.driftDustRight.start();
+        }
+    } else {
+        this.trailLeft.stop();
+        this.trailRight.stop();
+        if (this.driftDustLeft.isStarted()) {
+            this.driftDustLeft.stop();
+            this.driftDustRight.stop();
+        }
+    }
+
+    if (isDrifting) {
+        this.skidSoundTimer += dt;
+        if (this.skidSoundTimer > 0.1) {
+            this.skidSoundTimer = 0;
+            this.effectManager.playSkidSound();
+        }
+    }
   }
 
   crash() {
     this.isCrashed = true;
     const mat = this.mesh.material as StandardMaterial;
     mat.diffuseColor = new Color3(0.1, 0.1, 0.1);
+    this.effectManager.createExplosion(this.mesh.position);
   }
 }

@@ -1,5 +1,6 @@
 import { Scene, MeshBuilder, Vector3, Quaternion, Mesh, StandardMaterial, Color3, Ray } from "@babylonjs/core";
 import { Car } from "../player/Car";
+import { EffectManager } from "../effects/EffectManager";
 
 export class PoliceCar {
   private static nextId = 1;
@@ -16,7 +17,7 @@ export class PoliceCar {
   public health: number = 3;
   private lastCollisionTime: number = 0;
 
-  constructor(public scene: Scene, position: Vector3) {
+  constructor(public scene: Scene, position: Vector3, private effectManager: EffectManager) {
     this.mesh = MeshBuilder.CreateBox("police", { width: 1.6, height: 0.8, depth: 3.2 }, scene);
     this.mesh.position = position.clone();
     
@@ -45,6 +46,8 @@ export class PoliceCar {
             this.lastCollisionTime = now;
             this.health--;
             
+            this.effectManager.createSparks(this.mesh.position, this.mesh.position.subtract(collidedMesh.position).normalize());
+            
             // Flash white
             const mat = this.mesh.material as StandardMaterial;
             if (mat) {
@@ -63,8 +66,12 @@ export class PoliceCar {
           }
         } else if (collidedMesh.name.includes("destructible")) {
           if (collidedMesh.parent && collidedMesh.parent.name.includes("destructible")) {
-            if (!collidedMesh.parent.isDisposed()) collidedMesh.parent.dispose();
+            if (!collidedMesh.parent.isDisposed()) {
+                this.effectManager.createDust(collidedMesh.parent.position);
+                collidedMesh.parent.dispose();
+            }
           } else {
+            this.effectManager.createDust(collidedMesh.position);
             collidedMesh.dispose();
           }
         }
@@ -76,32 +83,7 @@ export class PoliceCar {
     if (this.isDestroyed) return;
     this.isDestroyed = true;
 
-    // Create explosion effect
-    const explosion = MeshBuilder.CreateSphere("explosion", { diameter: 3 }, this.scene);
-    explosion.position = this.mesh.position.clone();
-    
-    const mat = new StandardMaterial("expMat", this.scene);
-    mat.emissiveColor = new Color3(1, 0.4, 0);
-    mat.diffuseColor = new Color3(1, 0.2, 0);
-    mat.alpha = 0.8;
-    mat.transparencyMode = StandardMaterial.MATERIAL_ALPHABLEND;
-    explosion.material = mat;
-    
-    let scale = 1;
-    let alpha = 0.8;
-    
-    const observer = this.scene.onBeforeRenderObservable.add(() => {
-        const dt = this.scene.getEngine().getDeltaTime() / 1000;
-        scale += dt * 15;
-        explosion.scaling.setAll(scale);
-        alpha -= dt * 2;
-        mat.alpha = Math.max(0, alpha);
-        
-        if (alpha <= 0) {
-            explosion.dispose();
-            this.scene.onBeforeRenderObservable.removeCallback(observer);
-        }
-    });
+    this.effectManager.createExplosion(this.mesh.position);
 
     // Hide mesh and disable collisions
     this.mesh.isVisible = false;

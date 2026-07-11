@@ -6,6 +6,7 @@ import { Car } from "./player/Car";
 import { CarController } from "./player/CarController";
 import { PoliceManager } from "./ai/PoliceManager";
 import { ChunkGenerator } from "./world/ChunkGenerator";
+import { EffectManager } from "./effects/EffectManager";
 
 export class Game {
   public engine: Engine;
@@ -17,6 +18,7 @@ export class Game {
   public carController: CarController;
   public policeManager: PoliceManager;
   public chunkGenerator: ChunkGenerator;
+  public effectManager: EffectManager;
 
   public score: number = 0;
   public isGameOver: boolean = false;
@@ -31,9 +33,10 @@ export class Game {
     this.scene.clearColor = new Color4(0.12, 0.15, 0.18, 1);
     this.scene.collisionsEnabled = true;
 
+    this.effectManager = new EffectManager(this.scene);
     this.world = new World(this.scene);
     this.lighting = new Lighting(this.scene);
-    this.car = new Car(this.scene);
+    this.car = new Car(this.scene, this.effectManager);
     this.carController = new CarController(this.car);
     this.camera = new Camera(this.scene, this.car);
     this.policeManager = new PoliceManager(this.scene, this.car, this);

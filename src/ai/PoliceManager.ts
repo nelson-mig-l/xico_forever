@@ -61,7 +61,7 @@ export class PoliceManager {
       Math.sin(angle) * distance
     ));
     
-    const police = new PoliceCar(this.scene, spawnPos);
+    const police = new PoliceCar(this.scene, spawnPos, this.game.effectManager);
     this.policeCars.push(police);
   }
 }

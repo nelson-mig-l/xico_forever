@@ -42,7 +42,7 @@ This project is structured in phases to keep development modular and testable:
 - [ ] **Phase 7 — Road Generator:** Add procedural roads and intersections.
 - [x] **Phase 8 — Procedural Decorations:** Add randomly placed trees, lamp posts, fences, etc.
 - [ ] **Phase 9 — Camera Polish:** Add camera lag, rotation towards movement, and screen shake.
-- [ ] **Phase 10 — Crashes & Effects:** Add particles, tire marks, sparks, debris, and sound effects.
+- [x] **Phase 10 — Crashes & Effects:** Add particles, tire marks, sparks, debris, and sound effects.
 - [ ] **Phase 11 — Powerups:** Implement shield, slow time, EMP, nitro, and coin magnets.
 - [ ] **Phase 12 — Optimization:** Implement instancing, object pooling, and frustum culling.
 - [ ] **Phase 13 — Nice Extras:** Day/night cycle, weather (rain/fog), traffic, hidden shortcuts, and leaderboards.
