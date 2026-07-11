@@ -1,4 +1,4 @@
-import { Scene, MeshBuilder, Vector3, Quaternion, Mesh, StandardMaterial, Color3 } from "@babylonjs/core";
+import { Scene, MeshBuilder, Vector3, Quaternion, Mesh, StandardMaterial, Color3, Ray } from "@babylonjs/core";
 import { Car } from "../player/Car";
 
 export class PoliceCar {
@@ -122,18 +122,52 @@ export class PoliceCar {
     if (distance > 0) {
       toTarget.normalize();
       
-      const targetAngle = Math.atan2(toTarget.x, toTarget.z);
+      let targetAngle = Math.atan2(toTarget.x, toTarget.z);
+      
+      // Obstacle avoidance
+      const rayLen = 20;
+      const rayOffsets = [-0.6, -0.3, 0, 0.3, 0.6]; // Angles relative to heading
+      let avoidAngle = 0;
+      let hitCount = 0;
+
+      const origin = this.mesh.position.clone();
+      origin.y += 0.5;
+
+      for (const offset of rayOffsets) {
+        const rayHeading = this.heading + offset;
+        const dir = new Vector3(Math.sin(rayHeading), 0, Math.cos(rayHeading));
+        const ray = new Ray(origin, dir, rayLen);
+        const hit = this.scene.pickWithRay(ray, (mesh) => mesh.name.includes("building"));
+        
+        if (hit && hit.hit) {
+          hitCount++;
+          const hitDist = hit.distance;
+          const weight = 1.0 - (hitDist / rayLen);
+          
+          if (offset === 0) {
+            avoidAngle += Math.PI * 0.8 * weight; // Turn sharply if hitting center
+          } else {
+            avoidAngle += Math.sign(-offset) * weight * Math.PI * 0.5; 
+          }
+        }
+      }
+
+      if (hitCount > 0) {
+        targetAngle = this.heading + avoidAngle / hitCount;
+        // this.speed = Math.max(this.speed - this.acceleration * 2 * dt, this.maxSpeed * 0.3); // Slow down when avoiding
+      } else {
+        this.speed += this.acceleration * dt;
+      }
       
       let angleDiff = targetAngle - this.heading;
       while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
       while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
       
-      const steering = Math.sign(angleDiff) * Math.min(1, Math.abs(angleDiff) * 2);
+      const steering = Math.sign(angleDiff) * Math.min(1, Math.abs(angleDiff) * 3);
       
       this.heading += steering * this.turnSpeed * dt;
       this.mesh.rotationQuaternion = Quaternion.RotationAxis(Vector3.Up(), this.heading);
 
-      this.speed += this.acceleration * dt;
       this.speed = Math.min(this.speed, this.maxSpeed);
 
       this.velocity = this.forward.scale(this.speed);
