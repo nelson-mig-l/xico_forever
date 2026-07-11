@@ -23,7 +23,7 @@ export class Game {
 
   constructor(
     public canvas: HTMLCanvasElement, 
-    private setScore: (score: number, policeCount: number, destroyedCount: number) => void,
+    private setScore: (score: number, policeCount: number, destroyedCount: number, policeData: {id: number, health: number}[]) => void,
     private setGameOver: (state: boolean, finalScore: number) => void
   ) {
     this.engine = new Engine(canvas, true);
@@ -67,7 +67,12 @@ export class Game {
     this.chunkGenerator.update();
 
     this.score += dt * 10;
-    this.setScore(this.score, this.policeManager.policeCars.length, this.policeManager.destroyedCount);
+    this.setScore(
+      this.score, 
+      this.policeManager.policeCars.length, 
+      this.policeManager.destroyedCount,
+      this.policeManager.policeCars.map(p => ({ id: p.id, health: p.health }))
+    );
   }
 
   gameOver() {

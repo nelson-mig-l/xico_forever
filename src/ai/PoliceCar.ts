@@ -2,6 +2,8 @@ import { Scene, MeshBuilder, Vector3, Quaternion, Mesh, StandardMaterial, Color3
 import { Car } from "../player/Car";
 
 export class PoliceCar {
+  private static nextId = 1;
+  public id: number = PoliceCar.nextId++;
   public mesh: Mesh;
   public velocity: Vector3 = Vector3.Zero();
   public heading: number = 0;

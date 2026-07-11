@@ -6,12 +6,13 @@ export default function App() {
   const scoreRef = useRef<HTMLDivElement>(null);
   const policeCountRef = useRef<HTMLDivElement>(null);
   const destroyedCountRef = useRef<HTMLDivElement>(null);
+  const policeListRef = useRef<HTMLDivElement>(null);
   const [gameOver, setGameOver] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
 
   useEffect(() => {
     if (canvasRef.current) {
-      const game = new Game(canvasRef.current, (score, policeCount, destroyedCount) => {
+      const game = new Game(canvasRef.current, (score, policeCount, destroyedCount, policeData) => {
         if (scoreRef.current) {
           scoreRef.current.innerText = `SCORE: ${Math.floor(score)}`;
         }
@@ -20,6 +21,14 @@ export default function App() {
         }
         if (destroyedCountRef.current) {
           destroyedCountRef.current.innerText = `DESTROYED: ${destroyedCount}`;
+        }
+        if (policeListRef.current) {
+          policeListRef.current.innerHTML = policeData.map(p => 
+            `<div class="mb-2 p-2 bg-black/50 border border-red-500/50 rounded flex justify-between items-center w-48">
+              <span class="font-bold">CAR #${p.id}</span>
+              <span class="text-white">${'❤️'.repeat(Math.max(0, p.health))}</span>
+            </div>`
+          ).join('');
         }
       }, (state, score) => {
         setGameOver(state);
@@ -45,6 +54,12 @@ export default function App() {
       </div>
       <div ref={destroyedCountRef} className="absolute top-20 left-4 text-orange-400 font-mono text-xl font-bold select-none drop-shadow-md z-10 pointer-events-none">
         DESTROYED: 0
+      </div>
+
+      <div className="absolute top-4 right-4 text-red-500 font-mono text-sm select-none z-10 pointer-events-none flex flex-col items-end">
+        <div className="mb-2 font-bold text-lg">POLICE UNITS</div>
+        <div ref={policeListRef} className="flex flex-col items-end">
+        </div>
       </div>
 
       {gameOver && (
