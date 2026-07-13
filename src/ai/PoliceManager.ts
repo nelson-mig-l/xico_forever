@@ -6,6 +6,7 @@ import { Game } from "../Game";
 export class PoliceManager {
   public policeCars: PoliceCar[] = [];
   public destroyedCount: number = 0;
+  public lostCount: number = 0;
   private spawnTimer: number = 0;
   private difficultyTimer: number = 0;
   
@@ -47,6 +48,7 @@ export class PoliceManager {
       if (dist > 200) {
         police.dispose();
         this.policeCars.splice(i, 1);
+        this.lostCount++;
       }
     }
   }

@@ -6,13 +6,14 @@ export default function App() {
   const scoreRef = useRef<HTMLDivElement>(null);
   const policeCountRef = useRef<HTMLDivElement>(null);
   const destroyedCountRef = useRef<HTMLDivElement>(null);
+  const lostCountRef = useRef<HTMLDivElement>(null);
   const policeListRef = useRef<HTMLDivElement>(null);
   const [gameOver, setGameOver] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
 
   useEffect(() => {
     if (canvasRef.current) {
-      const game = new Game(canvasRef.current, (score, policeCount, destroyedCount, policeData) => {
+      const game = new Game(canvasRef.current, (score, policeCount, destroyedCount, policeData, lostCount) => {
         if (scoreRef.current) {
           scoreRef.current.innerText = `SCORE: ${Math.floor(score)}`;
         }
@@ -21,6 +22,9 @@ export default function App() {
         }
         if (destroyedCountRef.current) {
           destroyedCountRef.current.innerText = `DESTROYED: ${destroyedCount}`;
+        }
+        if (lostCountRef.current) {
+          lostCountRef.current.innerText = `LOST: ${lostCount}`;
         }
         if (policeListRef.current) {
           policeListRef.current.innerHTML = policeData.map(p => 
@@ -54,6 +58,9 @@ export default function App() {
       </div>
       <div ref={destroyedCountRef} className="absolute top-20 left-4 text-orange-400 font-mono text-xl font-bold select-none drop-shadow-md z-10 pointer-events-none">
         DESTROYED: 0
+      </div>
+      <div ref={lostCountRef} className="absolute top-28 left-4 text-gray-400 font-mono text-xl font-bold select-none drop-shadow-md z-10 pointer-events-none">
+        LOST: 0
       </div>
 
       <div className="absolute top-4 right-4 text-red-500 font-mono text-sm select-none z-10 pointer-events-none flex flex-col items-end">
