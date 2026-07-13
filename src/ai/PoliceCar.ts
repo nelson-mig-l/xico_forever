@@ -17,6 +17,8 @@ export class PoliceCar {
   public isDestroyed: boolean = false;
   public health: number = 3;
   private lastCollisionTime: number = 0;
+  private sirenMesh: Mesh | null = null;
+  private sirenMaterial: StandardMaterial | null = null;
 
   constructor(public scene: Scene, position: Vector3, private effectManager: EffectManager) {
     this.mesh = MeshBuilder.CreateBox("police", { width: 1.6, height: 0.8, depth: 3.2 }, scene);
@@ -53,6 +55,22 @@ export class PoliceCar {
           }
         }
       });
+
+      // Position the siren light perfectly on top of the car roof using bounding boxes
+      this.mesh.computeWorldMatrix(true);
+      result.meshes.forEach(m => m.computeWorldMatrix(true));
+      let maxWorldY = -9999;
+      result.meshes.forEach(m => {
+        const boundingInfo = m.getBoundingInfo();
+        const topY = boundingInfo.boundingBox.maximumWorld.y;
+        if (topY > maxWorldY) {
+          maxWorldY = topY;
+        }
+      });
+      if (maxWorldY > -9999 && this.sirenMesh) {
+        const localY = maxWorldY - this.mesh.position.y;
+        this.sirenMesh.position.y = localY + 0.1; // Place exactly on top of the roof
+      }
     }).catch(err => {
       console.error("Failed to load car_2.glb model:", err);
     });
@@ -62,9 +80,11 @@ export class PoliceCar {
     sirenMat.emissiveColor = Color3.Red();
     sirenMat.diffuseColor = Color3.Red();
     const siren = MeshBuilder.CreateBox("siren", { width: 0.4, height: 0.2, depth: 0.4 }, scene);
-    siren.position.y = 0.5;
+    siren.position.y = 0.5; // Fallback initial height, will be precisely adjusted when model loads
     siren.material = sirenMat;
     siren.parent = this.mesh;
+    this.sirenMesh = siren;
+    this.sirenMaterial = sirenMat;
 
     this.mesh.onCollideObservable.add((collidedMesh) => {
       if (collidedMesh && !collidedMesh.isDisposed()) {
@@ -208,11 +228,12 @@ export class PoliceCar {
     }
     
     // Flash siren
-    const sirenMat = (this.mesh.getChildren()[0] as Mesh).material as StandardMaterial;
-    if (Math.sin(Date.now() / 100) > 0) {
-        sirenMat.emissiveColor = Color3.Red();
-    } else {
-        sirenMat.emissiveColor = Color3.Blue();
+    if (this.sirenMaterial) {
+      if (Math.sin(Date.now() / 100) > 0) {
+          this.sirenMaterial.emissiveColor = Color3.Red();
+      } else {
+          this.sirenMaterial.emissiveColor = Color3.Blue();
+      }
     }
   }
 
