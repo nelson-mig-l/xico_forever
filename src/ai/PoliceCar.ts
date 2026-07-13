@@ -1,4 +1,5 @@
-import { Scene, MeshBuilder, Vector3, Quaternion, Mesh, StandardMaterial, Color3, Ray } from "@babylonjs/core";
+import { Scene, MeshBuilder, Vector3, Quaternion, Mesh, StandardMaterial, Color3, Ray, SceneLoader, Space, Texture } from "@babylonjs/core";
+import "@babylonjs/loaders/glTF";
 import { Car } from "../player/Car";
 import { EffectManager } from "../effects/EffectManager";
 
@@ -28,6 +29,33 @@ export class PoliceCar {
     const mat = new StandardMaterial("policeMat", scene);
     mat.diffuseColor = Color3.FromHexString("#ef4444"); // Red-500
     this.mesh.material = mat;
+
+    // Hide the collider box and load the detailed GLB model
+    this.mesh.visibility = 0;
+
+    SceneLoader.ImportMeshAsync("", "/src/assets/Models/", "car_2.glb", scene).then((result) => {
+      const rootMesh = result.meshes[0];
+      rootMesh.parent = this.mesh;
+      rootMesh.position = new Vector3(0, -0.4, 0);
+      rootMesh.rotate(new Vector3(1, 0, 0), -Math.PI / 2, Space.LOCAL);
+      rootMesh.rotate(new Vector3(0, 1, 0), -Math.PI / 2, Space.WORLD);
+      
+      const carTexture = new Texture("/src/assets/Textures/Car Texture 2.png", scene, false, false);
+      // Ensure the child meshes don't block collisions and apply the texture to their materials
+      result.meshes.forEach(m => {
+        m.checkCollisions = false;
+        if (m.material) {
+          const matAny = m.material as any;
+          if ("albedoTexture" in matAny) {
+            matAny.albedoTexture = carTexture;
+          } else if ("diffuseTexture" in matAny) {
+            matAny.diffuseTexture = carTexture;
+          }
+        }
+      });
+    }).catch(err => {
+      console.error("Failed to load car_2.glb model:", err);
+    });
     
     // Create a siren light
     const sirenMat = new StandardMaterial("sirenMat", scene);
@@ -48,17 +76,36 @@ export class PoliceCar {
             
             this.effectManager.createSparks(this.mesh.position, this.mesh.position.subtract(collidedMesh.position).normalize());
             
-            // Flash white
-            const mat = this.mesh.material as StandardMaterial;
-            if (mat) {
-              const oldColor = mat.diffuseColor.clone();
-              mat.diffuseColor = Color3.White();
-              setTimeout(() => {
-                if (!this.isDestroyed && this.mesh.material) {
-                  mat.diffuseColor = oldColor;
+            // Flash white for all descendant meshes of the model
+            const meshBackupList: { mesh: Mesh, oldColor?: Color3 }[] = [];
+            this.mesh.getChildMeshes().forEach(child => {
+              const m = child as Mesh;
+              if (m.material && m.name !== "siren") {
+                const matAny = m.material as any;
+                if (matAny.diffuseColor) {
+                  meshBackupList.push({ mesh: m, oldColor: matAny.diffuseColor.clone() });
+                  matAny.diffuseColor = Color3.White();
+                } else if (matAny.albedoColor) {
+                  meshBackupList.push({ mesh: m, oldColor: matAny.albedoColor.clone() });
+                  matAny.albedoColor = Color3.White();
                 }
-              }, 100);
-            }
+              }
+            });
+
+            setTimeout(() => {
+              if (!this.isDestroyed) {
+                meshBackupList.forEach(item => {
+                  if (item.mesh && !item.mesh.isDisposed() && item.mesh.material) {
+                    const matAny = item.mesh.material as any;
+                    if (matAny.diffuseColor && item.oldColor) {
+                      matAny.diffuseColor = item.oldColor;
+                    } else if (matAny.albedoColor && item.oldColor) {
+                      matAny.albedoColor = item.oldColor;
+                    }
+                  }
+                });
+              }
+            }, 100);
 
             if (this.health <= 0) {
               this.explode();
@@ -67,8 +114,8 @@ export class PoliceCar {
         } else if (collidedMesh.name.includes("destructible")) {
           if (collidedMesh.parent && collidedMesh.parent.name.includes("destructible")) {
             if (!collidedMesh.parent.isDisposed()) {
-                this.effectManager.createDust(collidedMesh.parent.position);
-                collidedMesh.parent.dispose();
+                this.effectManager.createDust((collidedMesh.parent as any).position);
+                (collidedMesh.parent as any).dispose();
             }
           } else {
             this.effectManager.createDust(collidedMesh.position);

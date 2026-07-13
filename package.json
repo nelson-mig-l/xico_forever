@@ -13,11 +13,13 @@
   "dependencies": {
     "@babylonjs/core": "^9.15.0",
     "@babylonjs/gui": "^9.15.0",
+    "@babylonjs/loaders": "^9.16.1",
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
+    "fbx2gltf": "^0.9.7-p1",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "react": "^19.0.1",
