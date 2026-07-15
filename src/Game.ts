@@ -25,7 +25,16 @@ export class Game {
 
   constructor(
     public canvas: HTMLCanvasElement, 
-    private setScore: (score: number, policeCount: number, destroyedCount: number, policeData: {id: number, health: number}[], lostCount: number) => void,
+    private setScore: (
+      score: number, 
+      policeCount: number, 
+      destroyedCount: number, 
+      policeData: {id: number, health: number}[], 
+      lostCount: number,
+      speed: number,
+      maxSpeed: number,
+      isDrifting: boolean
+    ) => void,
     private setGameOver: (state: boolean, finalScore: number) => void
   ) {
     this.engine = new Engine(canvas, true);
@@ -75,7 +84,10 @@ export class Game {
       this.policeManager.policeCars.length, 
       this.policeManager.destroyedCount,
       this.policeManager.policeCars.map(p => ({ id: p.id, health: p.health })),
-      this.policeManager.lostCount
+      this.policeManager.lostCount,
+      this.car.speed,
+      this.car.maxSpeed,
+      this.car.isDrifting
     );
   }
 

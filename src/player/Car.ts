@@ -14,6 +14,7 @@ export class Car {
   public driftFactor: number = 0.96; // Higher = more slidey
   
   public isCrashed: boolean = false;
+  public isDrifting: boolean = false;
   
   private trailLeft: TrailMesh;
   private trailRight: TrailMesh;
@@ -162,7 +163,8 @@ export class Car {
 
     // Handle trails & effects
     const lateralSpeed = lateralVelocity.length();
-    const isDrifting = lateralSpeed > 5.0 && Math.abs(this.speed) > 5;
+    this.isDrifting = lateralSpeed > 5.0 && Math.abs(this.speed) > 5;
+    const isDrifting = this.isDrifting;
     
     if (isDrifting) {
         this.trailLeft.start();

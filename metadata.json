@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
+  "name": "Police Chase",
+  "description": "A 3D arcade police-chase game built with React and Babylon.js featuring infinite procedurally-generated terrain and adaptive steering AI.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

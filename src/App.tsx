@@ -11,9 +11,13 @@ export default function App() {
   const [gameOver, setGameOver] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
 
+  // Speedometer element refs
+  const speedNumberRef = useRef<HTMLSpanElement>(null);
+  const speedGaugeRef = useRef<SVGCircleElement>(null);
+
   useEffect(() => {
     if (canvasRef.current) {
-      const game = new Game(canvasRef.current, (score, policeCount, destroyedCount, policeData, lostCount) => {
+      const game = new Game(canvasRef.current, (score, policeCount, destroyedCount, policeData, lostCount, speed, maxSpeed, isDrifting) => {
         if (scoreRef.current) {
           scoreRef.current.innerText = `SCORE: ${Math.floor(score)}`;
         }
@@ -33,6 +37,20 @@ export default function App() {
               <span class="text-white">${'❤️'.repeat(Math.max(0, p.health))}</span>
             </div>`
           ).join('');
+        }
+
+        // Speedometer UI Updates
+        const absSpeed = Math.abs(speed);
+        const displaySpeed = Math.floor(absSpeed * 6);
+        if (speedNumberRef.current) {
+          speedNumberRef.current.innerText = displaySpeed.toString();
+        }
+
+        // Gauge circular bar update (radius=40, circumference ~ 251.3)
+        if (speedGaugeRef.current) {
+          const progress = Math.min(absSpeed / maxSpeed, 1);
+          const offset = 251 - (progress * 251);
+          speedGaugeRef.current.style.strokeDashoffset = offset.toFixed(1);
         }
       }, (state, score) => {
         setGameOver(state);
@@ -84,6 +102,54 @@ export default function App() {
       
       <div className="absolute bottom-4 left-4 text-white/50 font-mono text-sm pointer-events-none">
         Controls: WASD or Arrow Keys
+      </div>
+
+      {/* High-fidelity HUD Speedometer */}
+      <div className="absolute bottom-4 right-4 z-10 pointer-events-none bg-black/75 border border-white/10 rounded-2xl p-3 flex items-center justify-center backdrop-blur-md shadow-2xl">
+        {/* Circular Speed Gauge */}
+        <div className="relative w-24 h-24 flex flex-col items-center justify-center">
+          <svg className="w-full h-full transform -rotate-90">
+            <defs>
+              <linearGradient id="speedGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#3b82f6" />
+                <stop offset="60%" stopColor="#a855f7" />
+                <stop offset="100%" stopColor="#ef4444" />
+              </linearGradient>
+            </defs>
+            {/* Background circle track */}
+            <circle
+              cx="48"
+              cy="48"
+              r="40"
+              stroke="rgba(255,255,255,0.08)"
+              strokeWidth="6"
+              fill="transparent"
+            />
+            {/* Active speed-indicating circle */}
+            <circle
+              ref={speedGaugeRef}
+              cx="48"
+              cy="48"
+              r="40"
+              stroke="url(#speedGradient)"
+              strokeWidth="6"
+              fill="transparent"
+              strokeDasharray="251"
+              strokeDashoffset="251"
+              strokeLinecap="round"
+              className="transition-all duration-75 ease-out"
+            />
+          </svg>
+          {/* Numeric speed readouts inside the dial */}
+          <div className="absolute flex flex-col items-center justify-center">
+            <span ref={speedNumberRef} className="text-3xl font-extrabold text-white font-mono tracking-tight leading-none">
+              0
+            </span>
+            <span className="text-[10px] text-gray-400 font-bold tracking-widest mt-0.5 leading-none">
+              MPH
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );
