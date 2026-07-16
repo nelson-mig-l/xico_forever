@@ -81,7 +81,6 @@ export class PoliceCar {
     sirenMat.diffuseColor = Color3.Red();
     const siren = MeshBuilder.CreateBox("siren", { width: 0.4, height: 0.2, depth: 0.4 }, scene);
     siren.position.y = 0.5; // Fallback initial height, will be precisely adjusted when model loads
-    siren.material = sirenMat;
     siren.parent = this.mesh;
     this.sirenMesh = siren;
     this.sirenMaterial = sirenMat;
