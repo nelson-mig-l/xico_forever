@@ -47,6 +47,28 @@ This project is structured in phases to keep development modular and testable:
 - [ ] **Phase 11 — Powerups:** Implement shield, slow time, EMP, nitro, and coin magnets.
 - [ ] **Phase 12 — Optimization:** Implement instancing, object pooling, and frustum culling.
 - [ ] **Phase 13 — Nice Extras:** Day/night cycle, weather (rain/fog), traffic, hidden shortcuts, and leaderboards.
+- [x] **Phase 14 — Asset Integrity & GitHub Pages Deployment:** Prevent binary asset corruption during git/text transfers and establish GitHub Pages hosting. See [GITHUB-PAGES.md](./GITHUB-PAGES.md) for full setup instructions.
+
+## Ensuring Binary Asset Integrity (GLB / FBX Files)
+
+Since `.glb` and `.fbx` are binary formats, their byte sequences must be preserved exactly. To ensure their encoding does not get modified or corrupted during Git transfers, repository checkouts, or deployment pipelines:
+
+### 1. Configure `.gitattributes`
+Create a `.gitattributes` file in the root of your repository to explicitly define these formats as binary. This tells Git to never perform line-ending normalization (like CRLF to LF) or text-based diff comparisons:
+```gitattributes
+# Force Git to treat these assets as binary blobs
+*.glb binary
+*.fbx binary
+*.png binary
+```
+
+### 2. Ensure Correct Web Server MIME-Types
+When deploying to a custom server or CDNs, verify that `.glb` files are served with the correct MIME-type:
+* **GLB MIME Type:** `model/gltf-binary`
+* **gltf MIME Type:** `model/gltf+json`
+
+### 3. Avoid Text-Based File Operations
+Never open binary files using text editors or modify them using scripts that read/write strings. Always use binary buffer operations (`rb`/`wb` modes in Python, or raw buffers in Node.js).
 
 ## Getting Started
 
