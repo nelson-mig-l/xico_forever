@@ -46,10 +46,10 @@ export default function App() {
           speedNumberRef.current.innerText = displaySpeed.toString();
         }
 
-        // Gauge circular bar update (radius=40, circumference ~ 251.3)
+        // Gauge circular bar update (radius=40, circumference ~ 251.3, half circle ~ 125.6)
         if (speedGaugeRef.current) {
           const progress = Math.min(absSpeed / maxSpeed, 1);
-          const offset = 251 - (progress * 251);
+          const offset = 125.6 - (progress * 125.6);
           speedGaugeRef.current.style.strokeDashoffset = offset.toFixed(1);
         }
       }, (state, score) => {
@@ -108,7 +108,7 @@ export default function App() {
       <div className="absolute bottom-4 right-4 z-10 pointer-events-none bg-black/75 border border-white/10 rounded-2xl p-3 flex items-center justify-center backdrop-blur-md shadow-2xl">
         {/* Circular Speed Gauge */}
         <div className="relative w-24 h-24 flex flex-col items-center justify-center">
-          <svg className="w-full h-full transform -rotate-90">
+          <svg className="w-full h-full transform rotate-180">
             <defs>
               <linearGradient id="speedGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="#3b82f6" />
@@ -116,7 +116,7 @@ export default function App() {
                 <stop offset="100%" stopColor="#ef4444" />
               </linearGradient>
             </defs>
-            {/* Background circle track */}
+            {/* Background circle track (half-circle) */}
             <circle
               cx="48"
               cy="48"
@@ -124,8 +124,10 @@ export default function App() {
               stroke="rgba(255,255,255,0.08)"
               strokeWidth="6"
               fill="transparent"
+              strokeDasharray="125.6 251.3"
+              strokeLinecap="round"
             />
-            {/* Active speed-indicating circle */}
+            {/* Active speed-indicating circle (half-circle) */}
             <circle
               ref={speedGaugeRef}
               cx="48"
@@ -134,18 +136,18 @@ export default function App() {
               stroke="url(#speedGradient)"
               strokeWidth="6"
               fill="transparent"
-              strokeDasharray="251"
-              strokeDashoffset="251"
+              strokeDasharray="125.6 251.3"
+              strokeDashoffset="125.6"
               strokeLinecap="round"
               className="transition-all duration-75 ease-out"
             />
           </svg>
-          {/* Numeric speed readouts inside the dial */}
-          <div className="absolute flex flex-col items-center justify-center">
+          {/* Numeric speed readouts inside the dial, positioned lower for a clean semi-circular look */}
+          <div className="absolute bottom-3 flex flex-col items-center justify-center">
             <span ref={speedNumberRef} className="text-3xl font-extrabold text-white font-mono tracking-tight leading-none">
               0
             </span>
-            <span className="text-[10px] text-gray-400 font-bold tracking-widest mt-0.5 leading-none">
+            <span className="text-[10px] text-gray-400 font-bold tracking-widest mt-1 leading-none">
               MPH
             </span>
           </div>
