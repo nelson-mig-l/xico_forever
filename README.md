@@ -47,7 +47,7 @@ This project is structured in phases to keep development modular and testable:
 - [ ] **Phase 11 — Powerups:** Implement shield, slow time, EMP, nitro, and coin magnets.
 - [ ] **Phase 12 — Optimization:** Implement instancing, object pooling, and frustum culling.
 - [ ] **Phase 13 — Nice Extras:** Day/night cycle, weather (rain/fog), traffic, hidden shortcuts, and leaderboards.
-- [x] **Phase 14 — Asset Integrity & GitHub Pages Deployment:** Prevent binary asset corruption during git/text transfers and establish GitHub Pages hosting. See [GITHUB-PAGES.md](./GITHUB-PAGES.md) for full setup instructions.
+- [ ] **Phase 14 — Asset Integrity & GitHub Pages Deployment:** Prevent binary asset corruption during git/text transfers and establish GitHub Pages hosting. See [GITHUB-PAGES.md](./GITHUB-PAGES.md) for full setup instructions.
 
 ## Ensuring Binary Asset Integrity (GLB / FBX Files)
 
@@ -68,7 +68,44 @@ When deploying to a custom server or CDNs, verify that `.glb` files are served w
 * **gltf MIME Type:** `model/gltf+json`
 
 ### 3. Avoid Text-Based File Operations
-Never open binary files using text editors or modify them using scripts that read/write strings. Always use binary buffer operations (`rb`/`wb` modes in Python, or raw buffers in Node.js).
+Never open binary files using text editors or modify them using scripts that read/write strings. Always use binary buffer operations (`rb`/`wb` modes in Python, or raw buffers in Node.js). If binary files are read or written as text/UTF-8, the system will replace invalid byte sequences with the UTF-8 replacement character (`\xef\xbf\xbd`), which permanently corrupts the files.
+
+---
+
+## 🛠️ Resolving and Recovering Corrupted 3D Models
+
+If you encounter Babylon.js errors such as:
+- `Length in header does not match actual data length`
+- `First chunk format is not JSON`
+
+This indicates that your `.glb` model files have been corrupted (e.g. by being edited, read, or transferred as a text-encoded format instead of a raw binary stream).
+
+### How It Was Solved
+The binary integrity was fully restored by recompiling the intact source FBX models (`car_1.fbx` and `car_2.fbx`) back into binary `.glb` containers using the pre-installed local tool `FBX2glTF`.
+
+### Rebuilding Binary Models (Cross-Platform Recovery Script)
+To automate this and prevent future manual CLI usage, a programmatic Node script has been added to the repository:
+
+1. **Run the rebuild script directly using NPM:**
+   ```bash
+   npm run assets:rebuild
+   ```
+
+2. **The underlying script (`scripts/rebuild-models.js`):**
+   This script programmatically uses the `fbx2gltf` Node wrapper package, which automatically detects your operating system (macOS, Linux, or Windows) and uses the corresponding native binary compiler:
+   ```javascript
+   import convert from 'fbx2gltf';
+   import path from 'path';
+
+   const src = path.resolve('public/assets/Models/car_1.fbx');
+   const dest = path.resolve('public/assets/Models/car_1.glb');
+
+   await convert(src, dest, ['--binary']);
+   ```
+
+Running `npm run assets:rebuild` ensures that fresh, perfectly-encoded binary `.glb` models are regenerated instantly.
+
+---
 
 ## Getting Started
 

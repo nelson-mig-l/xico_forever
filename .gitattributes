@@ -1,0 +1,4 @@
+# Force Git to treat these formats as binary to prevent encoding/text corruption
+*.glb binary
+*.fbx binary
+*.png binary
