@@ -624,7 +624,7 @@ export class ChunkGenerator {
                         buildingClone.rotation.y = angles[Math.floor(random() * angles.length)];
 
                         // Scale: 10x for massive skyscrapers in city blocks, 1.5x for street-side shops/townhouses
-                        const scale = isCityBlock ? (1.0 + random() * 0.4) * 10 : (1.0 + random() * 0.3) * 1.5;
+                        const scale = 10; // isCityBlock ? (1.0 + random() * 0.4) * 10 : (1.0 + random() * 0.3) * 1.5;
                         buildingClone.scaling.set(scale, scale * (0.7 + random() * 1.0), scale);
 
                         // Configure child mesh collisions, shadow reception, and assign shared building material
