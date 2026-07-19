@@ -22,6 +22,11 @@ export class CarController {
     if (this.keys.has("a") || this.keys.has("arrowleft")) steering = -1;
     if (this.keys.has("d") || this.keys.has("arrowright")) steering = 1;
 
+    if (this.keys.has("r")) {
+      this.keys.delete("r");
+      this.car.unstuck();
+    }
+
     this.car.applyInputs(throttle, steering, dt);
   }
 }

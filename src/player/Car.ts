@@ -72,6 +72,23 @@ export class Car {
             this.effectManager.createDust(collidedMesh.position);
             collidedMesh.dispose();
           }
+        } else {
+          const nameLower = collidedMesh.name.toLowerCase();
+          if (!nameLower.includes("ground") && !nameLower.includes("road") && !nameLower.includes("sidewalk")) {
+            // Solid obstacle (building, permanent fence, etc.)
+            if (Math.abs(this.speed) > 2.0) {
+              const sparkPos = this.mesh.position.clone();
+              const forwardDir = this.forward;
+              if (this.speed > 0) {
+                sparkPos.addInPlace(forwardDir.scale(1.6)); // Front of the car
+              } else {
+                sparkPos.addInPlace(forwardDir.scale(-1.6)); // Rear of the car
+              }
+              this.effectManager.createSparks(sparkPos);
+            }
+            // Bounce back slightly and reduce/reverse speed to prevent clipping through the wall
+            this.speed = -this.speed * 0.3;
+          }
         }
       }
     });
@@ -186,6 +203,31 @@ export class Car {
             this.effectManager.playSkidSound();
         }
     }
+  }
+
+  unstuck() {
+    if (this.isCrashed) return;
+
+    // Find nearest even chunk index for a guaranteed road intersection
+    const chunkSize = 50;
+    const currentCx = Math.floor(this.mesh.position.x / chunkSize);
+    const currentCz = Math.floor(this.mesh.position.z / chunkSize);
+
+    // Round to nearest even index
+    const cx = Math.round(currentCx / 2) * 2;
+    const cz = Math.round(currentCz / 2) * 2;
+
+    // Center of this chunk is guaranteed to be an empty road intersection
+    const targetX = cx * chunkSize + chunkSize / 2;
+    const targetZ = cz * chunkSize + chunkSize / 2;
+
+    // Teleport the car to safety (slightly elevated to prevent z-clipping)
+    this.mesh.position.set(targetX, 0.4, targetZ);
+    this.velocity = Vector3.Zero();
+    this.speed = 0;
+    
+    // Create dust effect to indicate teleportation
+    this.effectManager.createDust(this.mesh.position);
   }
 
   crash() {

@@ -241,8 +241,9 @@ export class ChunkGenerator {
           this.buildingTemplates.set(name, rootMesh);
         })
         .catch(err => {
-          console.error(`Failed to load building template ${name}:`, err);
-          throw err;
+          console.warn(`Failed to load GLB building template ${name}, falling back to procedural construction:`, err);
+          const rootMesh = this.createProceduralBuilding(name);
+          this.buildingTemplates.set(name, rootMesh);
         });
     });
 
@@ -570,18 +571,26 @@ export class ChunkGenerator {
         if (cx === 0 && cz === 0) continue;
 
         const typeRand = random();
+        const isCityBlock = !hasNS && !hasEW;
         
         let px = 0;
         let pz = 0;
         let found = false;
 
-        // Try to find a position not overlapping with roads or sidewalks
-        for (let retry = 0; retry < 5; retry++) {
-            px = cx * this.chunkSize + random() * this.chunkSize;
-            pz = cz * this.chunkSize + random() * this.chunkSize;
-            if (!isOnRoadOrSidewalk(px, pz)) {
-                found = true;
-                break;
+        if (isCityBlock && typeRand < 0.20) {
+            // Center massive building in the city block chunk so it never spills over onto boundary roads
+            px = cx * this.chunkSize + 25 + (random() * 6 - 3);
+            pz = cz * this.chunkSize + 25 + (random() * 6 - 3);
+            found = true;
+        } else {
+            // Try to find a position not overlapping with roads or sidewalks
+            for (let retry = 0; retry < 5; retry++) {
+                px = cx * this.chunkSize + random() * this.chunkSize;
+                pz = cz * this.chunkSize + random() * this.chunkSize;
+                if (!isOnRoadOrSidewalk(px, pz)) {
+                    found = true;
+                    break;
+                }
             }
         }
 
@@ -591,7 +600,7 @@ export class ChunkGenerator {
 
         if (typeRand < 0.15) {
             // Building
-            // Needs a generous safety distance because buildings are 10x larger and can overlap the spawn area
+            // Needs a generous safety distance because buildings can overlap the spawn area
             if (distanceToSpawn < 80) continue;
 
             if (this.buildingTemplates.size > 0) {
@@ -614,8 +623,8 @@ export class ChunkGenerator {
                         const angles = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2];
                         buildingClone.rotation.y = angles[Math.floor(random() * angles.length)];
 
-                        // Random scale & height variation
-                        const scale = (1.0 + random() * 0.4) * 10;
+                        // Scale: 10x for massive skyscrapers in city blocks, 1.5x for street-side shops/townhouses
+                        const scale = isCityBlock ? (1.0 + random() * 0.4) * 10 : (1.0 + random() * 0.3) * 1.5;
                         buildingClone.scaling.set(scale, scale * (0.7 + random() * 1.0), scale);
 
                         // Configure child mesh collisions, shadow reception, and assign shared building material
@@ -626,17 +635,19 @@ export class ChunkGenerator {
                         });
                     }
                 } else {
-                    const w = (4 + random() * 8) * 10;
-                    const d = (4 + random() * 8) * 10;
-                    const h = (5 + random() * 15) * 10;
+                    const scaleFactor = isCityBlock ? 10 : 1.5;
+                    const w = (4 + random() * 8) * scaleFactor;
+                    const d = (4 + random() * 8) * scaleFactor;
+                    const h = (5 + random() * 15) * scaleFactor;
                     const building = MeshBuilder.CreateBox("building", { width: w, height: h, depth: d }, this.scene);
                     building.position.set(px, h/2, pz);
                     meshes.building.push(building);
                 }
             } else {
-                const w = (4 + random() * 8) * 10;
-                const d = (4 + random() * 8) * 10;
-                const h = (5 + random() * 15) * 10;
+                const scaleFactor = isCityBlock ? 10 : 1.5;
+                const w = (4 + random() * 8) * scaleFactor;
+                const d = (4 + random() * 8) * scaleFactor;
+                const h = (5 + random() * 15) * scaleFactor;
                 const building = MeshBuilder.CreateBox("building", { width: w, height: h, depth: d }, this.scene);
                 building.position.set(px, h/2, pz);
                 meshes.building.push(building);

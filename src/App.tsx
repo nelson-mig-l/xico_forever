@@ -100,8 +100,9 @@ export default function App() {
         </div>
       )}
       
-      <div className="absolute bottom-4 left-4 text-white/50 font-mono text-sm pointer-events-none">
-        Controls: WASD or Arrow Keys
+      <div className="absolute bottom-4 left-4 text-white/50 font-mono text-sm pointer-events-none flex flex-col gap-1">
+        <div>Controls: WASD / Arrows</div>
+        <div>R: Unstuck / Respawn</div>
       </div>
 
       {/* High-fidelity HUD Speedometer */}
