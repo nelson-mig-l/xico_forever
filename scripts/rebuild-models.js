@@ -2,26 +2,48 @@ import convert from 'fbx2gltf';
 import path from 'path';
 import fs from 'fs';
 
-const src1 = path.resolve('public/assets/Models/car_1.fbx');
-const dest1 = path.resolve('public/assets/Models/car_1.glb');
-const src2 = path.resolve('public/assets/Models/car_2.fbx');
-const dest2 = path.resolve('public/assets/Models/car_2.glb');
-
-async function rebuild() {
+async function convertFbxToGlb(srcPath, destPath) {
+  console.log(`Rebuilding: ${srcPath} -> ${destPath}`);
   try {
-    console.log(`Rebuilding: ${src1} -> ${dest1}`);
-    const res1 = await convert(src1, dest1, ['--binary']);
-    console.log(`Successfully built car_1.glb at: ${res1}`);
+    const result = await convert(srcPath, destPath, ['--binary']);
+    console.log(`Successfully built GLB at: ${result}`);
+  } catch (err) {
+    console.error(`❌ Failed to convert ${srcPath}:`, err);
+    throw err;
+  }
+}
 
-    console.log(`Rebuilding: ${src2} -> ${dest2}`);
-    const res2 = await convert(src2, dest2, ['--binary']);
-    console.log(`Successfully built car_2.glb at: ${res2}`);
+async function rebuildAll() {
+  const dirsToScan = [
+    'public/assets/Models',
+    'public/assets/Buildings'
+  ];
 
-    console.log('✨ All 3D models rebuilt successfully with correct binary encoding!');
+  try {
+    for (const dir of dirsToScan) {
+      const resolvedDir = path.resolve(dir);
+      if (!fs.existsSync(resolvedDir)) {
+        console.warn(`Directory not found: ${resolvedDir}`);
+        continue;
+      }
+
+      const files = fs.readdirSync(resolvedDir);
+      for (const file of files) {
+        if (file.toLowerCase().endsWith('.fbx')) {
+          const srcPath = path.join(resolvedDir, file);
+          const baseName = path.basename(file, path.extname(file));
+          const destPath = path.join(resolvedDir, `${baseName}.glb`);
+          
+          await convertFbxToGlb(srcPath, destPath);
+        }
+      }
+    }
+    console.log('✨ All 3D models rebuilt and converted successfully with correct binary encoding!');
   } catch (err) {
     console.error('❌ Failed to rebuild 3D models:', err);
     process.exit(1);
   }
 }
 
-rebuild();
+rebuildAll();
+

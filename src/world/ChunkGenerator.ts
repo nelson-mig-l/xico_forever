@@ -1,11 +1,41 @@
-import { Scene, MeshBuilder, Vector3, StandardMaterial, Color3, Mesh } from "@babylonjs/core";
+import { Scene, MeshBuilder, Vector3, StandardMaterial, Color3, Mesh, SceneLoader, Texture } from "@babylonjs/core";
+import { GLTFFileLoader } from "@babylonjs/loaders/glTF";
 import { Car } from "../player/Car";
+
+// Disable loading GLTF/GLB internal materials/textures globally to avoid CSP/blob URL issues in the sandbox iframe
+SceneLoader.OnPluginActivatedObservable.add((loader) => {
+  if (loader.name === "gltf") {
+    (loader as any).skipMaterials = true;
+  }
+});
 
 export class ChunkGenerator {
   private chunkSize = 50;
   private renderDistance = 2; // chunks
   private activeChunks: Map<string, Mesh> = new Map();
   private materials: Record<string, StandardMaterial> = {};
+
+  private buildingTemplates: Map<string, Mesh> = new Map();
+  private standardBuildingTemplates: string[] = [
+    "low-detail-building-a",
+    "low-detail-building-b",
+    "low-detail-building-c",
+    "low-detail-building-d",
+    "low-detail-building-e",
+    "low-detail-building-f",
+    "low-detail-building-g",
+    "low-detail-building-h",
+    "low-detail-building-i",
+    "low-detail-building-j",
+    "low-detail-building-k",
+    "low-detail-building-l",
+    "low-detail-building-m",
+    "low-detail-building-n"
+  ];
+  private wideBuildingTemplates: string[] = [
+    "low-detail-building-wide-a",
+    "low-detail-building-wide-b"
+  ];
 
   constructor(public scene: Scene, public target: Car) {
     const mat = (name: string, hex: string, emissive?: string) => {
@@ -16,7 +46,14 @@ export class ChunkGenerator {
     };
 
     this.materials.ground = mat("groundMat", "#2e3338");
-    this.materials.building = mat("buildingMat", "#9ca3af");
+    
+    // Set up building material with texture mapping
+    const buildingMat = new StandardMaterial("buildingMat", this.scene);
+    buildingMat.diffuseColor = Color3.FromHexString("#9ca3af");
+    buildingMat.diffuseTexture = new Texture("/assets/Buildings/Textures/colormap.png", this.scene);
+    buildingMat.specularColor = new Color3(0, 0, 0);
+    this.materials.building = buildingMat;
+
     this.materials.trunk = mat("trunkMat", "#78350f");
     this.materials.leaves = mat("leavesMat", "#166534");
     this.materials.metal = mat("metalMat", "#4b5563");
@@ -27,6 +64,192 @@ export class ChunkGenerator {
     this.materials.roadLineYellow = mat("roadLineYellowMat", "#f59e0b", "#f59e0b"); // Yellow center line
     this.materials.roadLineWhite = mat("roadLineWhiteMat", "#f3f4f6"); // White edge lines
     this.materials.sidewalk = mat("sidewalkMat", "#4b5563"); // Concrete gray sidewalk
+
+    this.preloadBuildings();
+  }
+
+  private createProceduralBuilding(name: string): Mesh {
+    const root = new Mesh(name, this.scene);
+    root.setEnabled(false); // Hide master template from view
+
+    // Add child meshes based on building name to construct unique architectural styles
+    if (name === "low-detail-building-a") {
+      const h = 15;
+      const main = MeshBuilder.CreateBox("main", { width: 8, height: h, depth: 8 }, this.scene);
+      main.position.y = h / 2;
+      main.parent = root;
+    } else if (name === "low-detail-building-b") {
+      const main = MeshBuilder.CreateBox("main", { width: 8, height: 10, depth: 8 }, this.scene);
+      main.position.y = 5;
+      main.parent = root;
+      const top = MeshBuilder.CreateBox("top", { width: 6, height: 4, depth: 6 }, this.scene);
+      top.position.set(0, 12, 0);
+      top.parent = root;
+    } else if (name === "low-detail-building-c") {
+      const main = MeshBuilder.CreateBox("main", { width: 6, height: 20, depth: 6 }, this.scene);
+      main.position.y = 10;
+      main.parent = root;
+      const top = MeshBuilder.CreateBox("top", { width: 4, height: 5, depth: 4 }, this.scene);
+      top.position.set(0, 22.5, 0);
+      top.parent = root;
+    } else if (name === "low-detail-building-d") {
+      const h = 8;
+      const main = MeshBuilder.CreateBox("main", { width: 10, height: h, depth: 10 }, this.scene);
+      main.position.y = h / 2;
+      main.parent = root;
+    } else if (name === "low-detail-building-e") {
+      const main = MeshBuilder.CreateBox("main", { width: 6, height: 18, depth: 6 }, this.scene);
+      main.position.y = 9;
+      main.parent = root;
+      const ant = MeshBuilder.CreateCylinder("antenna", { height: 4, diameter: 0.2 }, this.scene);
+      ant.position.set(0, 20, 0);
+      ant.parent = root;
+    } else if (name === "low-detail-building-f") {
+      const b = MeshBuilder.CreateBox("base", { width: 8, height: 6, depth: 8 }, this.scene);
+      b.position.y = 3;
+      b.parent = root;
+      const m = MeshBuilder.CreateBox("mid", { width: 6, height: 6, depth: 6 }, this.scene);
+      m.position.set(0, 9, 0);
+      m.parent = root;
+      const t = MeshBuilder.CreateBox("top", { width: 4, height: 6, depth: 4 }, this.scene);
+      t.position.set(0, 15, 0);
+      t.parent = root;
+    } else if (name === "low-detail-building-g") {
+      const t1 = MeshBuilder.CreateBox("t1", { width: 4.5, height: 14, depth: 4.5 }, this.scene);
+      t1.position.set(-2.5, 7, 0);
+      t1.parent = root;
+      const t2 = MeshBuilder.CreateBox("t2", { width: 4.5, height: 18, depth: 4.5 }, this.scene);
+      t2.position.set(2.5, 9, 0);
+      t2.parent = root;
+    } else if (name === "low-detail-building-h") {
+      const b = MeshBuilder.CreateBox("base", { width: 10, height: 4, depth: 10 }, this.scene);
+      b.position.y = 2;
+      b.parent = root;
+      const m = MeshBuilder.CreateBox("mid", { width: 8, height: 4, depth: 8 }, this.scene);
+      m.position.set(0, 6, 0);
+      m.parent = root;
+      const t = MeshBuilder.CreateBox("top", { width: 6, height: 4, depth: 6 }, this.scene);
+      t.position.set(0, 10, 0);
+      t.parent = root;
+    } else if (name === "low-detail-building-i") {
+      const h = 16;
+      const main = MeshBuilder.CreateBox("main", { width: 8, height: h, depth: 8 }, this.scene);
+      main.position.y = h / 2;
+      main.parent = root;
+      // Corner columns
+      for (const x of [-4.1, 4.1]) {
+        for (const z of [-4.1, 4.1]) {
+          const col = MeshBuilder.CreateBox("col", { width: 0.5, height: h, depth: 0.5 }, this.scene);
+          col.position.set(x, h/2, z);
+          col.parent = root;
+        }
+      }
+    } else if (name === "low-detail-building-j") {
+      const b1 = MeshBuilder.CreateBox("b1", { width: 10, height: 12, depth: 6 }, this.scene);
+      b1.position.set(0, 6, -2);
+      b1.parent = root;
+      const b2 = MeshBuilder.CreateBox("b2", { width: 6, height: 12, depth: 10 }, this.scene);
+      b2.position.set(-2, 6, 2);
+      b2.parent = root;
+    } else if (name === "low-detail-building-k") {
+      const cyl = MeshBuilder.CreateCylinder("cyl", { height: 16, diameter: 8 }, this.scene);
+      cyl.position.y = 8;
+      cyl.parent = root;
+    } else if (name === "low-detail-building-l") {
+      const main = MeshBuilder.CreateBox("main", { width: 9, height: 12, depth: 9 }, this.scene);
+      main.position.y = 6;
+      main.parent = root;
+      // Roof parapet walls
+      const p1 = MeshBuilder.CreateBox("p1", { width: 9, height: 0.8, depth: 0.2 }, this.scene);
+      p1.position.set(0, 12.4, -4.4);
+      p1.parent = root;
+      const p2 = MeshBuilder.CreateBox("p2", { width: 9, height: 0.8, depth: 0.2 }, this.scene);
+      p2.position.set(0, 12.4, 4.4);
+      p2.parent = root;
+      const p3 = MeshBuilder.CreateBox("p3", { width: 0.2, height: 0.8, depth: 8.6 }, this.scene);
+      p3.position.set(-4.4, 12.4, 0);
+      p3.parent = root;
+      const p4 = MeshBuilder.CreateBox("p4", { width: 0.2, height: 0.8, depth: 8.6 }, this.scene);
+      p4.position.set(4.4, 12.4, 0);
+      p4.parent = root;
+    } else if (name === "low-detail-building-m") {
+      const cyl = MeshBuilder.CreateCylinder("cyl", { height: 15, diameter: 8, tessellation: 6 }, this.scene);
+      cyl.position.y = 7.5;
+      cyl.parent = root;
+    } else if (name === "low-detail-building-n") {
+      const main = MeshBuilder.CreateBox("main", { width: 8, height: 12, depth: 8 }, this.scene);
+      main.position.y = 6;
+      main.parent = root;
+      const dome = MeshBuilder.CreateSphere("dome", { diameter: 6, segments: 16 }, this.scene);
+      dome.position.set(0, 12, 0);
+      dome.parent = root;
+    } else if (name === "low-detail-building-wide-a") {
+      const main = MeshBuilder.CreateBox("main", { width: 18, height: 6, depth: 12 }, this.scene);
+      main.position.y = 3;
+      main.parent = root;
+      // HVAC units on roof
+      const hvac1 = MeshBuilder.CreateBox("hvac1", { width: 2, height: 1.5, depth: 2 }, this.scene);
+      hvac1.position.set(-4, 6.75, -2);
+      hvac1.parent = root;
+      const hvac2 = MeshBuilder.CreateBox("hvac2", { width: 3, height: 1.2, depth: 1.5 }, this.scene);
+      hvac2.position.set(3, 6.6, 2);
+      hvac2.parent = root;
+    } else if (name === "low-detail-building-wide-b") {
+      const main = MeshBuilder.CreateBox("main", { width: 16, height: 5, depth: 16 }, this.scene);
+      main.position.y = 2.5;
+      main.parent = root;
+      const top = MeshBuilder.CreateBox("top", { width: 10, height: 4, depth: 10 }, this.scene);
+      top.position.set(0, 7, 0);
+      top.parent = root;
+    } else {
+      const h = 10;
+      const main = MeshBuilder.CreateBox("main", { width: 8, height: h, depth: 8 }, this.scene);
+      main.position.y = h / 2;
+      main.parent = root;
+    }
+
+    // Ensure all child meshes have collisions disabled as templates
+    root.getChildMeshes().forEach(m => {
+      m.checkCollisions = false;
+    });
+
+    return root;
+  }
+
+  private preloadBuildings() {
+    const allBuildings = [...this.standardBuildingTemplates, ...this.wideBuildingTemplates];
+    const promises = allBuildings.map(name => {
+      return SceneLoader.ImportMeshAsync("", "/assets/Buildings/", `${name}.glb`, this.scene)
+        .then((result) => {
+          const rootMesh = result.meshes[0] as Mesh;
+          rootMesh.name = name;
+          rootMesh.setEnabled(false); // Hide master template from view
+          rootMesh.metadata = { isGlb: true };
+          
+          // Apply the shared building material with the correct colormap texture
+          result.meshes.forEach(m => {
+            m.checkCollisions = false;
+            m.material = this.materials.building;
+          });
+          
+          this.buildingTemplates.set(name, rootMesh);
+        })
+        .catch(err => {
+          console.error(`Failed to load building template ${name}:`, err);
+          throw err;
+        });
+    });
+
+    Promise.all(promises).then(() => {
+      // Refresh chunks asynchronously in the next microtask to let templates stabilize
+      setTimeout(() => {
+        for (const [key, mesh] of this.activeChunks.entries()) {
+          mesh.dispose();
+        }
+        this.activeChunks.clear();
+        this.update();
+      }, 0);
+    });
   }
 
   private createLampPost(parent: Mesh, rotationY: number) {
@@ -360,12 +583,53 @@ export class ChunkGenerator {
 
         if (typeRand < 0.15) {
             // Building
-            const w = 4 + random() * 8;
-            const d = 4 + random() * 8;
-            const h = 5 + random() * 15;
-            const building = MeshBuilder.CreateBox("building", { width: w, height: h, depth: d }, this.scene);
-            building.position.set(px, h/2, pz);
-            meshes.building.push(building);
+            if (this.buildingTemplates.size > 0) {
+                const useWide = (random() < 0.25); // 25% chance of a wide building
+                const list = useWide ? this.wideBuildingTemplates : this.standardBuildingTemplates;
+                const randomName = list[Math.floor(random() * list.length)];
+                const template = this.buildingTemplates.get(randomName);
+
+                if (template) {
+                    const buildingClone = template.instantiateHierarchy(chunkNode) as any;
+                    if (buildingClone) {
+                        buildingClone.name = `building_${cx}_${cz}_${i}`;
+                        buildingClone.setEnabled(true);
+                        buildingClone.position.set(px, 0, pz);
+                        
+                        // Clear rotationQuaternion to allow rotation.y setting safely
+                        buildingClone.rotationQuaternion = null;
+                        
+                        // Grid-aligned 90-degree rotations for cleaner look
+                        const angles = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2];
+                        buildingClone.rotation.y = angles[Math.floor(random() * angles.length)];
+
+                        // Random scale & height variation
+                        const scale = 1.0 + random() * 0.4;
+                        buildingClone.scaling.set(scale, scale * (0.7 + random() * 1.0), scale);
+
+                        // Configure child mesh collisions, shadow reception, and assign shared building material
+                        buildingClone.getChildMeshes().forEach((child: any) => {
+                            child.checkCollisions = true;
+                            child.receiveShadows = true;
+                            child.material = this.materials.building;
+                        });
+                    }
+                } else {
+                    const w = 4 + random() * 8;
+                    const d = 4 + random() * 8;
+                    const h = 5 + random() * 15;
+                    const building = MeshBuilder.CreateBox("building", { width: w, height: h, depth: d }, this.scene);
+                    building.position.set(px, h/2, pz);
+                    meshes.building.push(building);
+                }
+            } else {
+                const w = 4 + random() * 8;
+                const d = 4 + random() * 8;
+                const h = 5 + random() * 15;
+                const building = MeshBuilder.CreateBox("building", { width: w, height: h, depth: d }, this.scene);
+                building.position.set(px, h/2, pz);
+                meshes.building.push(building);
+            }
         } else if (typeRand < 0.6) {
             // Tree
             const treeRoot = new Mesh("destructible_tree_" + i, this.scene);

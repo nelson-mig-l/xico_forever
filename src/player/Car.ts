@@ -38,7 +38,7 @@ export class Car {
     // Hide the collider box mesh and load the detailed GLB model
     this.mesh.visibility = 0;
 
-    SceneLoader.ImportMeshAsync("", "./assets/Models/", "car_1.glb", scene).then((result) => {
+    SceneLoader.ImportMeshAsync("", "/assets/Models/", "car_1.glb", scene).then((result) => {
       const rootMesh = result.meshes[0];
       rootMesh.parent = this.mesh;
       // Offset the model so its bottom aligns with the collider base
@@ -46,18 +46,15 @@ export class Car {
       rootMesh.rotate(new Vector3(1, 0, 0), -Math.PI / 2, Space.LOCAL);
       rootMesh.rotate(new Vector3(0, 1, 0), -Math.PI / 2, Space.WORLD);
       
-      const carTexture = new Texture("./assets/Textures/Car Texture 1.png", scene, false, false);
-      // Ensure the child meshes don't block collisions and apply the texture to their materials
+      const carMaterial = new StandardMaterial("carModelMat", scene);
+      const carTexture = new Texture("/assets/Textures/Car Texture 1.png", scene, false, false);
+      carMaterial.diffuseTexture = carTexture;
+      carMaterial.specularColor = new Color3(0, 0, 0);
+      
+      // Ensure the child meshes don't block collisions and apply the material
       result.meshes.forEach(m => {
         m.checkCollisions = false;
-        if (m.material) {
-          const matAny = m.material as any;
-          if ("albedoTexture" in matAny) {
-            matAny.albedoTexture = carTexture;
-          } else if ("diffuseTexture" in matAny) {
-            matAny.diffuseTexture = carTexture;
-          }
-        }
+        m.material = carMaterial;
       });
     }).catch(err => {
       console.error("Failed to load car_1.glb model:", err);
