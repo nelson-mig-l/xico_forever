@@ -3,10 +3,16 @@ import { GLTFFileLoader } from "@babylonjs/loaders/glTF";
 import { Car } from "../player/Car";
 
 // Disable loading GLTF/GLB internal materials/textures globally to avoid CSP/blob URL issues in the sandbox iframe
-SceneLoader.OnPluginActivatedObservable.add((loader) => {
-  if (loader.name === "gltf") {
-    (loader as any).skipMaterials = true;
-  }
+// We use a getter/setter on GLTFFileLoader.prototype to ensure that even when constructors try to set skipMaterials = false, it remains true.
+Object.defineProperty(GLTFFileLoader.prototype, "skipMaterials", {
+  get() {
+    return true;
+  },
+  set() {
+    // Ignore any attempts to override this to false
+  },
+  configurable: true,
+  enumerable: true
 });
 
 export class ChunkGenerator {
@@ -604,7 +610,7 @@ export class ChunkGenerator {
                         buildingClone.rotation.y = angles[Math.floor(random() * angles.length)];
 
                         // Random scale & height variation
-                        const scale = 1.0 + random() * 0.4;
+                        const scale = (1.0 + random() * 0.4) * 10;
                         buildingClone.scaling.set(scale, scale * (0.7 + random() * 1.0), scale);
 
                         // Configure child mesh collisions, shadow reception, and assign shared building material
@@ -615,17 +621,17 @@ export class ChunkGenerator {
                         });
                     }
                 } else {
-                    const w = 4 + random() * 8;
-                    const d = 4 + random() * 8;
-                    const h = 5 + random() * 15;
+                    const w = (4 + random() * 8) * 10;
+                    const d = (4 + random() * 8) * 10;
+                    const h = (5 + random() * 15) * 10;
                     const building = MeshBuilder.CreateBox("building", { width: w, height: h, depth: d }, this.scene);
                     building.position.set(px, h/2, pz);
                     meshes.building.push(building);
                 }
             } else {
-                const w = 4 + random() * 8;
-                const d = 4 + random() * 8;
-                const h = 5 + random() * 15;
+                const w = (4 + random() * 8) * 10;
+                const d = (4 + random() * 8) * 10;
+                const h = (5 + random() * 15) * 10;
                 const building = MeshBuilder.CreateBox("building", { width: w, height: h, depth: d }, this.scene);
                 building.position.set(px, h/2, pz);
                 meshes.building.push(building);
