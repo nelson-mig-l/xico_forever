@@ -55,8 +55,8 @@ export class ChunkGenerator {
     
     // Set up building material with texture mapping
     const buildingMat = new StandardMaterial("buildingMat", this.scene);
-    buildingMat.diffuseColor = Color3.FromHexString("#9ca3af");
-    buildingMat.diffuseTexture = new Texture("/assets/Buildings/Textures/colormap.png", this.scene);
+    buildingMat.diffuseColor = Color3.FromHexString("#ffffff"); // use full brightness for texture mapping
+    buildingMat.diffuseTexture = new Texture("/assets/Buildings/Textures/colormap.png", this.scene, false, false);
     buildingMat.specularColor = new Color3(0, 0, 0);
     this.materials.building = buildingMat;
 
