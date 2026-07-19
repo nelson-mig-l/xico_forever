@@ -566,8 +566,8 @@ export class ChunkGenerator {
 
     const numProps = Math.floor(random() * 20) + 15;
     for (let i = 0; i < numProps; i++) {
-        // Leave center chunk clear for initial spawn
-        if (cx === 0 && cz === 0 && i < 20) continue;
+        // Leave center chunk entirely clear for initial spawn
+        if (cx === 0 && cz === 0) continue;
 
         const typeRand = random();
         
@@ -587,8 +587,13 @@ export class ChunkGenerator {
 
         if (!found) continue;
 
+        const distanceToSpawn = Math.max(Math.abs(px - 25), Math.abs(pz - 25));
+
         if (typeRand < 0.15) {
             // Building
+            // Needs a generous safety distance because buildings are 10x larger and can overlap the spawn area
+            if (distanceToSpawn < 80) continue;
+
             if (this.buildingTemplates.size > 0) {
                 const useWide = (random() < 0.25); // 25% chance of a wide building
                 const list = useWide ? this.wideBuildingTemplates : this.standardBuildingTemplates;
@@ -638,6 +643,7 @@ export class ChunkGenerator {
             }
         } else if (typeRand < 0.6) {
             // Tree
+            if (distanceToSpawn < 30) continue;
             const treeRoot = new Mesh("destructible_tree_" + i, this.scene);
             treeRoot.position.set(px, 0, pz);
             treeRoot.parent = chunkNode;
@@ -664,6 +670,7 @@ export class ChunkGenerator {
             }
         } else {
             // Fence
+            if (distanceToSpawn < 30) continue;
             const length = 4 + random() * 6;
             const angle = random() > 0.5 ? 0 : Math.PI / 2;
             const fenceH = 1.2;

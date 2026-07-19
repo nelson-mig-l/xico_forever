@@ -24,7 +24,7 @@ export class Car {
 
   constructor(public scene: Scene, private effectManager: EffectManager) {
     this.mesh = MeshBuilder.CreateBox("car", { width: 1.6, height: 0.8, depth: 3.2 }, scene);
-    this.mesh.position.y = 0.4;
+    this.mesh.position.set(25, 0.4, 25);
     
     this.mesh.checkCollisions = true;
     this.mesh.ellipsoid = new Vector3(0.8, 0.4, 1.6);
