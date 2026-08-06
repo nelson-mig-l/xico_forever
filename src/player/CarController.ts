@@ -2,14 +2,21 @@ import { Car } from "./Car";
 
 export class CarController {
   private keys: Set<string> = new Set();
+  private onKeyDown = (e: KeyboardEvent) => {
+    this.keys.add(e.key.toLowerCase());
+  };
+  private onKeyUp = (e: KeyboardEvent) => {
+    this.keys.delete(e.key.toLowerCase());
+  };
 
   constructor(private car: Car) {
-    window.addEventListener("keydown", (e) => {
-      this.keys.add(e.key.toLowerCase());
-    });
-    window.addEventListener("keyup", (e) => {
-      this.keys.delete(e.key.toLowerCase());
-    });
+    window.addEventListener("keydown", this.onKeyDown);
+    window.addEventListener("keyup", this.onKeyUp);
+  }
+
+  dispose() {
+    window.removeEventListener("keydown", this.onKeyDown);
+    window.removeEventListener("keyup", this.onKeyUp);
   }
 
   update(dt: number) {

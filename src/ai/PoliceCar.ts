@@ -7,6 +7,8 @@ export class PoliceCar {
   private static nextId = 1;
   public id: number = PoliceCar.nextId++;
   public mesh: Mesh;
+  public modelWrapper: Mesh | null = null;
+  public modelRoot: Mesh | null = null;
   public velocity: Vector3 = Vector3.Zero();
   public heading: number = 0;
   
@@ -33,17 +35,20 @@ export class PoliceCar {
     this.mesh.material = mat;
 
     // Hide the collider box and load the detailed GLB model
-    this.mesh.visibility = 0;
+    this.mesh.isVisible = false;
 
-    SceneLoader.ImportMeshAsync("", "/assets/Models/", "car_2.glb", scene).then((result) => {
-      const rootMesh = result.meshes[0];
-      rootMesh.parent = this.mesh;
-      rootMesh.position = new Vector3(0, -0.4, 0);
-      rootMesh.rotate(new Vector3(1, 0, 0), -Math.PI / 2, Space.LOCAL);
-      rootMesh.rotate(new Vector3(0, 1, 0), -Math.PI / 2, Space.WORLD);
+    SceneLoader.ImportMeshAsync("", "./assets/Models/", "car_2.glb", scene).then((result) => {
+      const rootMesh = result.meshes[0] as Mesh;
+      this.modelRoot = rootMesh;
+      this.modelWrapper = new Mesh("policeModelWrapper", scene);
+      this.modelWrapper.position = this.mesh.position.add(new Vector3(0, -0.4, 0));
+      this.modelRoot.parent = this.modelWrapper;
+      this.modelRoot.position = Vector3.Zero();
+      this.modelRoot.rotate(new Vector3(1, 0, 0), -Math.PI / 2, Space.LOCAL);
+      this.modelRoot.rotate(new Vector3(0, 1, 0), -Math.PI / 2, Space.WORLD);
       
       const carMaterial = new StandardMaterial("policeModelMat", scene);
-      const carTexture = new Texture("/assets/Textures/Car Texture 2.png", scene, false, false);
+      const carTexture = new Texture("./assets/Textures/Car Texture 2.png", scene, false, false);
       carMaterial.diffuseTexture = carTexture;
       carMaterial.specularColor = new Color3(0, 0, 0);
       
@@ -79,6 +84,7 @@ export class PoliceCar {
     const siren = MeshBuilder.CreateBox("siren", { width: 0.4, height: 0.2, depth: 0.4 }, scene);
     siren.position.y = 0.5; // Fallback initial height, will be precisely adjusted when model loads
     siren.parent = this.mesh;
+    siren.material = sirenMat;
     this.sirenMesh = siren;
     this.sirenMaterial = sirenMat;
 
@@ -221,6 +227,10 @@ export class PoliceCar {
       moveVector.y = 0; // Gravity
       this.mesh.moveWithCollisions(moveVector);
       this.mesh.position.y = 0.4;
+      if (this.modelWrapper && this.mesh.rotationQuaternion) {
+        this.modelWrapper.position.copyFrom(this.mesh.position).addInPlace(new Vector3(0, -0.4, 0));
+        this.modelWrapper.rotationQuaternion = this.mesh.rotationQuaternion;
+      }
     }
     
     // Flash siren

@@ -4,6 +4,8 @@ import { EffectManager } from "../effects/EffectManager";
 
 export class Car {
   public mesh: Mesh;
+  public modelWrapper: Mesh | null = null;
+  public modelRoot: Mesh | null = null;
   public velocity: Vector3 = Vector3.Zero();
   public heading: number = 0;
   
@@ -36,18 +38,20 @@ export class Car {
     this.mesh.material = mat;
 
     // Hide the collider box mesh and load the detailed GLB model
-    this.mesh.visibility = 0;
+    this.mesh.isVisible = false;
 
-    SceneLoader.ImportMeshAsync("", "/assets/Models/", "car_1.glb", scene).then((result) => {
-      const rootMesh = result.meshes[0];
-      rootMesh.parent = this.mesh;
-      // Offset the model so its bottom aligns with the collider base
-      rootMesh.position = new Vector3(0, -0.4, 0);
-      rootMesh.rotate(new Vector3(1, 0, 0), -Math.PI / 2, Space.LOCAL);
-      rootMesh.rotate(new Vector3(0, 1, 0), -Math.PI / 2, Space.WORLD);
+    SceneLoader.ImportMeshAsync("", "./assets/Models/", "car_1.glb", scene).then((result) => {
+      const rootMesh = result.meshes[0] as Mesh;
+      this.modelRoot = rootMesh;
+      this.modelWrapper = new Mesh("carModelWrapper", scene);
+      this.modelWrapper.position = this.mesh.position.add(new Vector3(0, -0.4, 0));
+      this.modelRoot.parent = this.modelWrapper;
+      this.modelRoot.position = Vector3.Zero();
+      this.modelRoot.rotate(new Vector3(1, 0, 0), -Math.PI / 2, Space.LOCAL);
+      this.modelRoot.rotate(new Vector3(0, 1, 0), -Math.PI / 2, Space.WORLD);
       
       const carMaterial = new StandardMaterial("carModelMat", scene);
-      const carTexture = new Texture("/assets/Textures/Car Texture 1.png", scene, false, false);
+      const carTexture = new Texture("./assets/Textures/Car Texture 1.png", scene, false, false);
       carMaterial.diffuseTexture = carTexture;
       carMaterial.specularColor = new Color3(0, 0, 0);
       
@@ -174,6 +178,13 @@ export class Car {
 
     // Lock Y to prevent flying
     this.mesh.position.y = 0.4;
+
+    if (this.modelWrapper) {
+      this.modelWrapper.position.copyFrom(this.mesh.position).addInPlace(new Vector3(0, -0.4, 0));
+      if (this.mesh.rotationQuaternion) {
+        this.modelWrapper.rotationQuaternion = this.mesh.rotationQuaternion;
+      }
+    }
 
     // Handle trails & effects
     const lateralSpeed = lateralVelocity.length();

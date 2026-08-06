@@ -7,9 +7,10 @@ export default function App() {
   const policeCountRef = useRef<HTMLDivElement>(null);
   const destroyedCountRef = useRef<HTMLDivElement>(null);
   const lostCountRef = useRef<HTMLDivElement>(null);
-  const policeListRef = useRef<HTMLDivElement>(null);
+  const [policeData, setPoliceData] = useState<{ id: number; health: number }[]>([]);
   const [gameOver, setGameOver] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
+  const [resetCount, setResetCount] = useState(0);
 
   // Speedometer element refs
   const speedNumberRef = useRef<HTMLSpanElement>(null);
@@ -30,14 +31,7 @@ export default function App() {
         if (lostCountRef.current) {
           lostCountRef.current.innerText = `LOST: ${lostCount}`;
         }
-        if (policeListRef.current) {
-          policeListRef.current.innerHTML = policeData.map(p => 
-            `<div class="mb-2 p-2 bg-black/50 border border-red-500/50 rounded flex justify-between items-center w-48">
-              <span class="font-bold">CAR #${p.id}</span>
-              <span class="text-white">${'❤️'.repeat(Math.max(0, p.health))}</span>
-            </div>`
-          ).join('');
-        }
+          setPoliceData(policeData);
 
         // Speedometer UI Updates
         const absSpeed = Math.abs(speed);
@@ -62,7 +56,7 @@ export default function App() {
         game.dispose();
       };
     }
-  }, []);
+  }, [resetCount]);
 
   return (
     <div className="relative w-full h-screen overflow-hidden bg-gray-900">
@@ -83,7 +77,13 @@ export default function App() {
 
       <div className="absolute top-4 right-4 text-red-500 font-mono text-sm select-none z-10 pointer-events-none flex flex-col items-end">
         <div className="mb-2 font-bold text-lg">POLICE UNITS</div>
-        <div ref={policeListRef} className="flex flex-col items-end">
+        <div className="flex flex-col items-end">
+          {policeData.map((p) => (
+            <div key={p.id} className="mb-2 p-2 bg-black/50 border border-red-500/50 rounded flex justify-between items-center w-48">
+              <span className="font-bold">CAR #{p.id}</span>
+              <span className="text-white">{'❤️'.repeat(Math.max(0, p.health))}</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -92,7 +92,12 @@ export default function App() {
           <h1 className="text-6xl font-black mb-4 text-red-500 tracking-widest drop-shadow-lg">BUSTED</h1>
           <p className="text-2xl mb-8 font-mono">FINAL SCORE: {Math.floor(finalScore)}</p>
           <button 
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              setGameOver(false);
+              setFinalScore(0);
+              setPoliceData([]);
+              setResetCount((count) => count + 1);
+            }}
             className="px-8 py-4 bg-white text-black font-bold rounded-lg hover:bg-gray-200 transition-colors shadow-lg pointer-events-auto"
           >
             PLAY AGAIN

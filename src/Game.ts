@@ -60,10 +60,13 @@ export class Game {
       }
     });
 
-    window.addEventListener("resize", () => {
+    this.boundResize = () => {
       this.engine.resize();
-    });
+    };
+    window.addEventListener("resize", this.boundResize);
   }
+
+  private boundResize: () => void;
 
   start() {
     this.engine.runRenderLoop(() => {
@@ -99,6 +102,8 @@ export class Game {
   }
 
   dispose() {
+    this.carController.dispose();
+    window.removeEventListener("resize", this.boundResize);
     this.scene.dispose();
     this.engine.dispose();
   }
