@@ -158,6 +158,16 @@ export class PoliceCar {
     this.mesh.isVisible = false;
     this.mesh.checkCollisions = false;
     this.mesh.getChildMeshes().forEach(m => m.isVisible = false);
+
+    if (this.modelWrapper) {
+      this.modelWrapper.isVisible = false;
+      this.modelWrapper.getChildMeshes().forEach(m => m.isVisible = false);
+    }
+
+    if (this.modelRoot) {
+      this.modelRoot.isVisible = false;
+      this.modelRoot.getChildMeshes().forEach(m => m.isVisible = false);
+    }
   }
 
   get forward(): Vector3 {
@@ -244,6 +254,17 @@ export class PoliceCar {
   }
 
   dispose() {
-    this.mesh.dispose();
+    if (this.modelWrapper && !this.modelWrapper.isDisposed()) {
+      this.modelWrapper.dispose();
+    }
+    if (this.modelRoot && !this.modelRoot.isDisposed()) {
+      this.modelRoot.dispose();
+    }
+    if (this.sirenMesh && !this.sirenMesh.isDisposed()) {
+      this.sirenMesh.dispose();
+    }
+    if (this.mesh && !this.mesh.isDisposed()) {
+      this.mesh.dispose();
+    }
   }
 }
