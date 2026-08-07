@@ -225,7 +225,7 @@ export class ChunkGenerator {
   private preloadBuildings() {
     const allBuildings = [...this.standardBuildingTemplates, ...this.wideBuildingTemplates];
     const promises = allBuildings.map(name => {
-      return SceneLoader.ImportMeshAsync("", "/assets/Buildings/", `${name}.glb`, this.scene)
+      return SceneLoader.ImportMeshAsync("", "./assets/Buildings/", `${name}.glb`, this.scene)
         .then((result) => {
           const rootMesh = result.meshes[0] as Mesh;
           rootMesh.name = name;
