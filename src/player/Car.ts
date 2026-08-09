@@ -90,8 +90,13 @@ export class Car {
               }
               this.effectManager.createSparks(sparkPos);
             }
-            // Bounce back slightly and reduce/reverse speed to prevent clipping through the wall
+            // Bounce back slightly and reduce/reverse speed to prevent clipping through the wall.
+            // Also reflect the full velocity vector (not just the scalar forward speed): update()
+            // derives next frame's lateral (sideways) velocity from this.velocity, so an angled/
+            // glancing hit that was previously only dampened by driftFactor (4%/frame) would keep
+            // sliding the car into the wall every frame — this is what caused the car to get stuck.
             this.speed = -this.speed * 0.3;
+            this.velocity = this.velocity.scale(-0.3);
           }
         }
       }
