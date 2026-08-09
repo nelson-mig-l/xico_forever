@@ -33,7 +33,8 @@ export class Game {
       lostCount: number,
       speed: number,
       maxSpeed: number,
-      isDrifting: boolean
+      isDrifting: boolean,
+      fps: number
     ) => void,
     private setGameOver: (state: boolean, finalScore: number) => void
   ) {
@@ -90,7 +91,8 @@ export class Game {
       this.policeManager.lostCount,
       this.car.speed,
       this.car.maxSpeed,
-      this.car.isDrifting
+      this.car.isDrifting,
+      this.engine.getFps()
     );
   }
 

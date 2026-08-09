@@ -7,6 +7,7 @@ export default function App() {
   const policeCountRef = useRef<HTMLDivElement>(null);
   const destroyedCountRef = useRef<HTMLDivElement>(null);
   const lostCountRef = useRef<HTMLDivElement>(null);
+  const fpsRef = useRef<HTMLDivElement>(null);
   const [policeData, setPoliceData] = useState<{ id: number; health: number }[]>([]);
   const [gameOver, setGameOver] = useState(false);
   const [finalScore, setFinalScore] = useState(0);
@@ -18,7 +19,7 @@ export default function App() {
 
   useEffect(() => {
     if (canvasRef.current) {
-      const game = new Game(canvasRef.current, (score, policeCount, destroyedCount, policeData, lostCount, speed, maxSpeed, isDrifting) => {
+      const game = new Game(canvasRef.current, (score, policeCount, destroyedCount, policeData, lostCount, speed, maxSpeed, isDrifting, fps) => {
         if (scoreRef.current) {
           scoreRef.current.innerText = `SCORE: ${Math.floor(score)}`;
         }
@@ -30,6 +31,9 @@ export default function App() {
         }
         if (lostCountRef.current) {
           lostCountRef.current.innerText = `LOST: ${lostCount}`;
+        }
+        if (fpsRef.current) {
+          fpsRef.current.innerText = `${Math.round(fps)} FPS`;
         }
           setPoliceData(policeData);
 
@@ -73,6 +77,14 @@ export default function App() {
       </div>
       <div ref={lostCountRef} className="absolute top-28 left-4 text-gray-400 font-mono text-xl font-bold select-none drop-shadow-md z-10 pointer-events-none">
         LOST: 0
+      </div>
+
+      <div 
+        ref={fpsRef} 
+        id="fps-counter" 
+        className="absolute top-4 left-1/2 -translate-x-1/2 text-emerald-400 font-mono text-lg font-bold select-none drop-shadow-md z-10 pointer-events-none bg-black/60 px-3 py-1 rounded-full border border-emerald-500/30 backdrop-blur-sm shadow-lg tracking-wider"
+      >
+        -- FPS
       </div>
 
       <div className="absolute top-4 right-4 text-red-500 font-mono text-sm select-none z-10 pointer-events-none flex flex-col items-end">
