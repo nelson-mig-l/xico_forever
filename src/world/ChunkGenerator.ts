@@ -1,6 +1,7 @@
-import { Scene, MeshBuilder, Vector3, StandardMaterial, Color3, Mesh, TransformNode, AbstractMesh, SceneLoader, Texture } from "@babylonjs/core";
+import { Scene, MeshBuilder, Vector3, StandardMaterial, Color3, Mesh, TransformNode, AbstractMesh, SceneLoader, Texture, VertexBuffer, VertexData } from "@babylonjs/core";
 import { GLTFFileLoader } from "@babylonjs/loaders/glTF";
 import { Car } from "../player/Car";
+import { getTerrainHeight } from "./Terrain";
 
 // Disable loading GLTF/GLB internal materials/textures globally to avoid CSP/blob URL issues in the sandbox iframe
 // We use a getter/setter on GLTFFileLoader.prototype to ensure that even when constructors try to set skipMaterials = false, it remains true.
@@ -55,7 +56,7 @@ export class ChunkGenerator {
         return m;
     };
 
-    this.materials.ground = mat("groundMat", "#2e3338");
+    this.materials.ground = mat("groundMat", "#2e6e3b");
     
     // Set up building material with texture mapping
     const buildingMat = new StandardMaterial("buildingMat", this.scene);
@@ -427,18 +428,33 @@ export class ChunkGenerator {
   generateChunk(cx: number, cz: number, key: string) {
     const chunkNode = new TransformNode(`chunk_${key}`, this.scene);
 
-    // Draw base ground
-    const ground = MeshBuilder.CreateGround(`ground_${key}`, { width: this.chunkSize, height: this.chunkSize }, this.scene);
-    ground.position.set(cx * this.chunkSize + this.chunkSize/2, 0, cz * this.chunkSize + this.chunkSize/2);
-    ground.material = this.materials.ground;
-    ground.parent = chunkNode;
-    ground.checkCollisions = true;
+    const centerX = cx * this.chunkSize + this.chunkSize / 2;
+    const centerZ = cz * this.chunkSize + this.chunkSize / 2;
 
-    const roadY = 0.005; // Slightly above ground to prevent z-fighting
-    const lineY = 0.01;  // Slightly above road
+    // Helper to build ground planes deformed to terrain height
+    const createDeformedGround = (name: string, width: number, height: number, worldX: number, worldZ: number, yOffset: number) => {
+      const subs = Math.max(4, Math.floor(Math.max(width, height) / 2.5));
+      const mesh = MeshBuilder.CreateGround(name, { width, height, subdivisions: subs }, this.scene);
+      mesh.position.set(worldX, 0, worldZ);
+      const pos = mesh.getVerticesData(VertexBuffer.PositionKind);
+      if (pos) {
+        for (let i = 0; i < pos.length; i += 3) {
+          const wx = worldX + pos[i];
+          const wz = worldZ + pos[i + 2];
+          pos[i + 1] = getTerrainHeight(wx, wz) + yOffset;
+        }
+        mesh.updateVerticesData(VertexBuffer.PositionKind, pos);
+        const normals = mesh.getVerticesData(VertexBuffer.NormalKind);
+        if (normals) {
+          VertexData.ComputeNormals(pos, mesh.getIndices(), normals);
+          mesh.updateVerticesData(VertexBuffer.NormalKind, normals);
+        }
+      }
+      return mesh;
+    };
 
-    // Grouped by shared material so each group can be merged into a single draw
-    // call per chunk instead of leaving dozens of tiny static meshes as separate nodes.
+
+    // Grouped by shared material for chunk mesh merging
     const meshes: Record<string, Mesh[]> = {
         building: [],
         road: [],
@@ -450,9 +466,6 @@ export class ChunkGenerator {
     const hasNS = (Math.abs(cx) % 2 === 0);
     const hasEW = (Math.abs(cz) % 2 === 0);
 
-    const centerX = cx * this.chunkSize + this.chunkSize / 2;
-    const centerZ = cz * this.chunkSize + this.chunkSize / 2;
-    
     const roadWidth = 12;
     const halfW = roadWidth / 2;
     const sidewalkWidth = 1.5;
@@ -474,7 +487,7 @@ export class ChunkGenerator {
         return false;
     };
 
-    // Helper to draw dashed lines for center lanes
+    // Helper to draw dashed lines for center lanes conforming to terrain height
     const createDashedLine = (startX: number, startZ: number, endX: number, endZ: number, isVertical: boolean) => {
         const dashLength = 1.5;
         const gap = 1.5;
@@ -485,8 +498,7 @@ export class ChunkGenerator {
             for (let z = startZ; z < endZ; z += step) {
                 const length = Math.min(dashLength, endZ - z);
                 if (length <= 0.1) break;
-                const dash = MeshBuilder.CreateGround("dash", { width: dashWidth, height: length }, this.scene);
-                dash.position.set(startX, lineY, z + length / 2);
+                const dash = createDeformedGround("dash", dashWidth, length, startX, z + length / 2, 0.04);
                 dash.material = this.materials.roadLineYellow;
                 meshes.lineYellow.push(dash);
             }
@@ -494,8 +506,7 @@ export class ChunkGenerator {
             for (let x = startX; x < endX; x += step) {
                 const length = Math.min(dashLength, endX - x);
                 if (length <= 0.1) break;
-                const dash = MeshBuilder.CreateGround("dash", { width: length, height: dashWidth }, this.scene);
-                dash.position.set(x + length / 2, lineY, endZ);
+                const dash = createDeformedGround("dash", length, dashWidth, x + length / 2, endZ, 0.04);
                 dash.material = this.materials.roadLineYellow;
                 meshes.lineYellow.push(dash);
             }
@@ -504,21 +515,18 @@ export class ChunkGenerator {
 
     // --- DRAW N-S ROAD AND SIDEWALKS ---
     if (hasNS) {
-        // Road surface
-        const nsRoad = MeshBuilder.CreateGround(`ns_road_${key}`, { width: roadWidth, height: this.chunkSize }, this.scene);
-        nsRoad.position.set(centerX, roadY, centerZ);
+        // Road surface conforming to terrain
+        const nsRoad = createDeformedGround(`ns_road_${key}`, roadWidth, this.chunkSize, centerX, centerZ, 0.02);
         nsRoad.material = this.materials.asphalt;
         meshes.road.push(nsRoad);
 
         // Sidewalk Left
-        const nsSidewalkLeft = MeshBuilder.CreateGround(`ns_sidewalk_l_${key}`, { width: sidewalkWidth, height: this.chunkSize }, this.scene);
-        nsSidewalkLeft.position.set(centerX - halfW - sidewalkWidth / 2, roadY - 0.001, centerZ);
+        const nsSidewalkLeft = createDeformedGround(`ns_sidewalk_l_${key}`, sidewalkWidth, this.chunkSize, centerX - halfW - sidewalkWidth / 2, centerZ, 0.03);
         nsSidewalkLeft.material = this.materials.sidewalk;
         meshes.sidewalk.push(nsSidewalkLeft);
 
         // Sidewalk Right
-        const nsSidewalkRight = MeshBuilder.CreateGround(`ns_sidewalk_r_${key}`, { width: sidewalkWidth, height: this.chunkSize }, this.scene);
-        nsSidewalkRight.position.set(centerX + halfW + sidewalkWidth / 2, roadY - 0.001, centerZ);
+        const nsSidewalkRight = createDeformedGround(`ns_sidewalk_r_${key}`, sidewalkWidth, this.chunkSize, centerX + halfW + sidewalkWidth / 2, centerZ, 0.03);
         nsSidewalkRight.material = this.materials.sidewalk;
         meshes.sidewalk.push(nsSidewalkRight);
 
@@ -529,37 +537,31 @@ export class ChunkGenerator {
             createDashedLine(centerX, centerZ + halfW, centerX, (cz + 1) * this.chunkSize, true);
 
             // Left white lines
-            const wl1 = MeshBuilder.CreateGround("wl", { width: 0.15, height: this.chunkSize/2 - halfW }, this.scene);
-            wl1.position.set(centerX - halfW, lineY, cz * this.chunkSize + (this.chunkSize/2 - halfW)/2);
+            const wl1 = createDeformedGround("wl", 0.15, this.chunkSize/2 - halfW, centerX - halfW, cz * this.chunkSize + (this.chunkSize/2 - halfW)/2, 0.04);
             wl1.material = this.materials.roadLineWhite;
             meshes.lineWhite.push(wl1);
 
-            const wl2 = MeshBuilder.CreateGround("wl", { width: 0.15, height: this.chunkSize/2 - halfW }, this.scene);
-            wl2.position.set(centerX - halfW, lineY, centerZ + halfW + (this.chunkSize/2 - halfW)/2);
+            const wl2 = createDeformedGround("wl", 0.15, this.chunkSize/2 - halfW, centerX - halfW, centerZ + halfW + (this.chunkSize/2 - halfW)/2, 0.04);
             wl2.material = this.materials.roadLineWhite;
             meshes.lineWhite.push(wl2);
 
             // Right white lines
-            const wl3 = MeshBuilder.CreateGround("wl", { width: 0.15, height: this.chunkSize/2 - halfW }, this.scene);
-            wl3.position.set(centerX + halfW, lineY, cz * this.chunkSize + (this.chunkSize/2 - halfW)/2);
+            const wl3 = createDeformedGround("wl", 0.15, this.chunkSize/2 - halfW, centerX + halfW, cz * this.chunkSize + (this.chunkSize/2 - halfW)/2, 0.04);
             wl3.material = this.materials.roadLineWhite;
             meshes.lineWhite.push(wl3);
 
-            const wl4 = MeshBuilder.CreateGround("wl", { width: 0.15, height: this.chunkSize/2 - halfW }, this.scene);
-            wl4.position.set(centerX + halfW, lineY, centerZ + halfW + (this.chunkSize/2 - halfW)/2);
+            const wl4 = createDeformedGround("wl", 0.15, this.chunkSize/2 - halfW, centerX + halfW, centerZ + halfW + (this.chunkSize/2 - halfW)/2, 0.04);
             wl4.material = this.materials.roadLineWhite;
             meshes.lineWhite.push(wl4);
         } else {
             // Straight road: continuous lines
             createDashedLine(centerX, cz * this.chunkSize, centerX, (cz + 1) * this.chunkSize, true);
 
-            const wlLeft = MeshBuilder.CreateGround("wl", { width: 0.15, height: this.chunkSize }, this.scene);
-            wlLeft.position.set(centerX - halfW, lineY, centerZ);
+            const wlLeft = createDeformedGround("wl", 0.15, this.chunkSize, centerX - halfW, centerZ, 0.04);
             wlLeft.material = this.materials.roadLineWhite;
             meshes.lineWhite.push(wlLeft);
 
-            const wlRight = MeshBuilder.CreateGround("wl", { width: 0.15, height: this.chunkSize }, this.scene);
-            wlRight.position.set(centerX + halfW, lineY, centerZ);
+            const wlRight = createDeformedGround("wl", 0.15, this.chunkSize, centerX + halfW, centerZ, 0.04);
             wlRight.material = this.materials.roadLineWhite;
             meshes.lineWhite.push(wlRight);
         }
@@ -567,13 +569,15 @@ export class ChunkGenerator {
         // Programmatic Streetlights along sidewalks
         const zCoords = [cz * this.chunkSize + 12.5, cz * this.chunkSize + 37.5];
         zCoords.forEach((pz, idx) => {
+            const postLX = centerX - halfW - 0.75;
             const postL = new TransformNode(`destructible_lamp_ns_l_${idx}`, this.scene);
-            postL.position.set(centerX - halfW - 0.75, 0, pz);
+            postL.position.set(postLX, getTerrainHeight(postLX, pz), pz);
             postL.parent = chunkNode;
             this.createLampPost(postL, 0);
 
+            const postRX = centerX + halfW + 0.75;
             const postR = new TransformNode(`destructible_lamp_ns_r_${idx}`, this.scene);
-            postR.position.set(centerX + halfW + 0.75, 0, pz);
+            postR.position.set(postRX, getTerrainHeight(postRX, pz), pz);
             postR.parent = chunkNode;
             this.createLampPost(postR, Math.PI);
         });
@@ -582,20 +586,17 @@ export class ChunkGenerator {
     // --- DRAW E-W ROAD AND SIDEWALKS ---
     if (hasEW) {
         // Road surface
-        const ewRoad = MeshBuilder.CreateGround(`ew_road_${key}`, { width: this.chunkSize, height: roadWidth }, this.scene);
-        ewRoad.position.set(centerX, roadY + 0.001, centerZ); // slightly higher to prevent z-fighting with overlapping N-S road
+        const ewRoad = createDeformedGround(`ew_road_${key}`, this.chunkSize, roadWidth, centerX, centerZ, 0.025);
         ewRoad.material = this.materials.asphalt;
         meshes.road.push(ewRoad);
 
         // Sidewalk Bottom
-        const ewSidewalkBottom = MeshBuilder.CreateGround(`ew_sidewalk_b_${key}`, { width: this.chunkSize, height: sidewalkWidth }, this.scene);
-        ewSidewalkBottom.position.set(centerX, roadY - 0.001, centerZ - halfW - sidewalkWidth / 2);
+        const ewSidewalkBottom = createDeformedGround(`ew_sidewalk_b_${key}`, this.chunkSize, sidewalkWidth, centerX, centerZ - halfW - sidewalkWidth / 2, 0.03);
         ewSidewalkBottom.material = this.materials.sidewalk;
         meshes.sidewalk.push(ewSidewalkBottom);
 
         // Sidewalk Top
-        const ewSidewalkTop = MeshBuilder.CreateGround(`ew_sidewalk_t_${key}`, { width: this.chunkSize, height: sidewalkWidth }, this.scene);
-        ewSidewalkTop.position.set(centerX, roadY - 0.001, centerZ + halfW + sidewalkWidth / 2);
+        const ewSidewalkTop = createDeformedGround(`ew_sidewalk_t_${key}`, this.chunkSize, sidewalkWidth, centerX, centerZ + halfW + sidewalkWidth / 2, 0.03);
         ewSidewalkTop.material = this.materials.sidewalk;
         meshes.sidewalk.push(ewSidewalkTop);
 
@@ -606,37 +607,31 @@ export class ChunkGenerator {
             createDashedLine(centerX + halfW, centerZ, (cx + 1) * this.chunkSize, centerZ, false);
 
             // Bottom white lines
-            const wl1 = MeshBuilder.CreateGround("wl", { width: this.chunkSize/2 - halfW, height: 0.15 }, this.scene);
-            wl1.position.set(cx * this.chunkSize + (this.chunkSize/2 - halfW)/2, lineY + 0.002, centerZ - halfW);
+            const wl1 = createDeformedGround("wl", this.chunkSize/2 - halfW, 0.15, cx * this.chunkSize + (this.chunkSize/2 - halfW)/2, centerZ - halfW, 0.04);
             wl1.material = this.materials.roadLineWhite;
             meshes.lineWhite.push(wl1);
 
-            const wl2 = MeshBuilder.CreateGround("wl", { width: this.chunkSize/2 - halfW, height: 0.15 }, this.scene);
-            wl2.position.set(centerX + halfW + (this.chunkSize/2 - halfW)/2, lineY + 0.002, centerZ - halfW);
+            const wl2 = createDeformedGround("wl", this.chunkSize/2 - halfW, 0.15, centerX + halfW + (this.chunkSize/2 - halfW)/2, centerZ - halfW, 0.04);
             wl2.material = this.materials.roadLineWhite;
             meshes.lineWhite.push(wl2);
 
             // Top white lines
-            const wl3 = MeshBuilder.CreateGround("wl", { width: this.chunkSize/2 - halfW, height: 0.15 }, this.scene);
-            wl3.position.set(cx * this.chunkSize + (this.chunkSize/2 - halfW)/2, lineY + 0.002, centerZ + halfW);
+            const wl3 = createDeformedGround("wl", this.chunkSize/2 - halfW, 0.15, cx * this.chunkSize + (this.chunkSize/2 - halfW)/2, centerZ + halfW, 0.04);
             wl3.material = this.materials.roadLineWhite;
             meshes.lineWhite.push(wl3);
 
-            const wl4 = MeshBuilder.CreateGround("wl", { width: this.chunkSize/2 - halfW, height: 0.15 }, this.scene);
-            wl4.position.set(centerX + halfW + (this.chunkSize/2 - halfW)/2, lineY + 0.002, centerZ + halfW);
+            const wl4 = createDeformedGround("wl", this.chunkSize/2 - halfW, 0.15, centerX + halfW + (this.chunkSize/2 - halfW)/2, centerZ + halfW, 0.04);
             wl4.material = this.materials.roadLineWhite;
             meshes.lineWhite.push(wl4);
         } else {
             // Straight road: continuous lines
             createDashedLine(cx * this.chunkSize, centerZ, (cx + 1) * this.chunkSize, centerZ, false);
 
-            const wlBottom = MeshBuilder.CreateGround("wl", { width: this.chunkSize, height: 0.15 }, this.scene);
-            wlBottom.position.set(centerX, lineY + 0.002, centerZ - halfW);
+            const wlBottom = createDeformedGround("wl", this.chunkSize, 0.15, centerX, centerZ - halfW, 0.04);
             wlBottom.material = this.materials.roadLineWhite;
             meshes.lineWhite.push(wlBottom);
 
-            const wlTop = MeshBuilder.CreateGround("wl", { width: this.chunkSize, height: 0.15 }, this.scene);
-            wlTop.position.set(centerX, lineY + 0.002, centerZ + halfW);
+            const wlTop = createDeformedGround("wl", this.chunkSize, 0.15, centerX, centerZ + halfW, 0.04);
             wlTop.material = this.materials.roadLineWhite;
             meshes.lineWhite.push(wlTop);
         }
@@ -645,13 +640,15 @@ export class ChunkGenerator {
         if (!hasNS) {
             const xCoords = [cx * this.chunkSize + 12.5, cx * this.chunkSize + 37.5];
             xCoords.forEach((px, idx) => {
+                const postBZ = centerZ - halfW - 0.75;
                 const postB = new TransformNode(`destructible_lamp_ew_b_${idx}`, this.scene);
-                postB.position.set(px, 0, centerZ - halfW - 0.75);
+                postB.position.set(px, getTerrainHeight(px, postBZ), postBZ);
                 postB.parent = chunkNode;
                 this.createLampPost(postB, Math.PI / 2);
 
+                const postTZ = centerZ + halfW + 0.75;
                 const postT = new TransformNode(`destructible_lamp_ew_t_${idx}`, this.scene);
-                postT.position.set(px, 0, centerZ + halfW + 0.75);
+                postT.position.set(px, getTerrainHeight(px, postTZ), postTZ);
                 postT.parent = chunkNode;
                 this.createLampPost(postT, -Math.PI / 2);
             });
@@ -717,7 +714,7 @@ export class ChunkGenerator {
                     if (buildingClone) {
                         buildingClone.name = `building_${cx}_${cz}_${i}`;
                         buildingClone.setEnabled(true);
-                        buildingClone.position.set(px, 0, pz);
+                        buildingClone.position.set(px, getTerrainHeight(px, pz), pz);
                         
                         // Clear rotationQuaternion to allow rotation.y setting safely
                         buildingClone.rotationQuaternion = null;
@@ -769,7 +766,7 @@ export class ChunkGenerator {
                     const d = (4 + random() * 8) * scaleFactor;
                     const h = (5 + random() * 15) * scaleFactor;
                     const building = MeshBuilder.CreateBox("building", { width: w, height: h, depth: d }, this.scene);
-                    building.position.set(px, h/2, pz);
+                    building.position.set(px, getTerrainHeight(px, pz) + h/2, pz);
                     meshes.building.push(building);
                 }
             } else {
@@ -778,7 +775,7 @@ export class ChunkGenerator {
                 const d = (4 + random() * 8) * scaleFactor;
                 const h = (5 + random() * 15) * scaleFactor;
                 const building = MeshBuilder.CreateBox("building", { width: w, height: h, depth: d }, this.scene);
-                building.position.set(px, h/2, pz);
+                building.position.set(px, getTerrainHeight(px, pz) + h/2, pz);
                 meshes.building.push(building);
             }
         } else if (typeRand < 0.6) {
@@ -786,7 +783,7 @@ export class ChunkGenerator {
             if (distanceToSpawn < 30) continue;
             const treeRoot = this.treeTemplate.clone(`destructible_tree_${i}`, chunkNode, false) as TransformNode;
             treeRoot.setEnabled(true);
-            treeRoot.position.set(px, 0, pz);
+            treeRoot.position.set(px, getTerrainHeight(px, pz), pz);
 
             // Node.clone() renames children to "<newRootName>.<originalName>", so match by suffix.
             const treeChildren = treeRoot.getChildren(undefined, false);
@@ -807,7 +804,7 @@ export class ChunkGenerator {
             // Only spawn random lamp post if no roads are in this chunk (to provide ambient light)
             if (!hasNS && !hasEW) {
                 const postRoot = new TransformNode("destructible_lamppost_" + i, this.scene);
-                postRoot.position.set(px, 0, pz);
+                postRoot.position.set(px, getTerrainHeight(px, pz), pz);
                 postRoot.parent = chunkNode;
                 this.createLampPost(postRoot, random() * Math.PI * 2);
             }
@@ -822,7 +819,7 @@ export class ChunkGenerator {
             const fence = this.fenceTemplate.clone(`destructible_fence_${i}`, chunkNode, true) as Mesh;
             fence.setEnabled(true);
             fence.checkCollisions = true;
-            fence.position.set(px, fenceH / 2, pz);
+            fence.position.set(px, getTerrainHeight(px, pz) + fenceH / 2, pz);
             fence.rotation.y = angle;
             fence.scaling.x = length;
         }

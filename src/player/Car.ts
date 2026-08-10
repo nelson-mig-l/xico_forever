@@ -1,6 +1,7 @@
 import { Scene, MeshBuilder, Vector3, Quaternion, Mesh, StandardMaterial, Color3, TrailMesh, ParticleSystem, SceneLoader, Space, Texture } from "@babylonjs/core";
 import "@babylonjs/loaders/glTF";
 import { EffectManager } from "../effects/EffectManager";
+import { getTerrainHeight, getTerrainSlopeAngles } from "../world/Terrain";
 
 export class Car {
   public mesh: Mesh;
@@ -26,7 +27,7 @@ export class Car {
 
   constructor(public scene: Scene, private effectManager: EffectManager) {
     this.mesh = MeshBuilder.CreateBox("car", { width: 1.6, height: 0.8, depth: 3.2 }, scene);
-    this.mesh.position.set(25, 0.4, 25);
+    this.mesh.position.set(25, getTerrainHeight(25, 25) + 0.4, 25);
     
     this.mesh.checkCollisions = true;
     this.mesh.ellipsoid = new Vector3(0.8, 0.4, 1.6);
@@ -186,8 +187,16 @@ export class Car {
     
     this.mesh.moveWithCollisions(moveVector);
 
-    // Lock Y to prevent flying
-    this.mesh.position.y = 0.4;
+    // Dynamic terrain height and slope orientation
+    const terrainInfo = getTerrainSlopeAngles(this.mesh.position.x, this.mesh.position.z, this.heading);
+    this.mesh.position.y = terrainInfo.height + 0.4;
+
+    const targetRotation = Quaternion.RotationYawPitchRoll(this.heading, -terrainInfo.pitch, terrainInfo.roll);
+    if (this.mesh.rotationQuaternion) {
+      Quaternion.SlerpToRef(this.mesh.rotationQuaternion, targetRotation, Math.min(1, dt * 15), this.mesh.rotationQuaternion);
+    } else {
+      this.mesh.rotationQuaternion = targetRotation;
+    }
 
     if (this.modelWrapper) {
       this.modelWrapper.position.copyFrom(this.mesh.position).addInPlace(new Vector3(0, -0.4, 0));
@@ -241,7 +250,8 @@ export class Car {
     const targetZ = cz * chunkSize + chunkSize / 2;
 
     // Teleport the car to safety (slightly elevated to prevent z-clipping)
-    this.mesh.position.set(targetX, 0.4, targetZ);
+    const targetY = getTerrainHeight(targetX, targetZ) + 0.4;
+    this.mesh.position.set(targetX, targetY, targetZ);
     this.velocity = Vector3.Zero();
     this.speed = 0;
     

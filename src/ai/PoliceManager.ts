@@ -2,6 +2,7 @@ import { Scene, Vector3 } from "@babylonjs/core";
 import { PoliceCar } from "./PoliceCar";
 import { Car } from "../player/Car";
 import { Game } from "../Game";
+import { getTerrainHeight } from "../world/Terrain";
 
 export class PoliceManager {
   public policeCars: PoliceCar[] = [];
@@ -57,11 +58,10 @@ export class PoliceManager {
     // Spawn off-screen
     const angle = Math.random() * Math.PI * 2;
     const distance = 100; // Distance from player
-    const spawnPos = this.target.mesh.position.add(new Vector3(
-      Math.cos(angle) * distance,
-      0.4,
-      Math.sin(angle) * distance
-    ));
+    const spawnX = this.target.mesh.position.x + Math.cos(angle) * distance;
+    const spawnZ = this.target.mesh.position.z + Math.sin(angle) * distance;
+    const spawnY = getTerrainHeight(spawnX, spawnZ) + 0.4;
+    const spawnPos = new Vector3(spawnX, spawnY, spawnZ);
     
     const police = new PoliceCar(this.scene, spawnPos, this.game.effectManager);
     this.policeCars.push(police);

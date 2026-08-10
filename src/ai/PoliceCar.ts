@@ -2,6 +2,7 @@ import { Scene, MeshBuilder, Vector3, Quaternion, Mesh, StandardMaterial, Color3
 import "@babylonjs/loaders/glTF";
 import { Car } from "../player/Car";
 import { EffectManager } from "../effects/EffectManager";
+import { getTerrainSlopeAngles } from "../world/Terrain";
 
 export class PoliceCar {
   private static nextId = 1;
@@ -225,18 +226,24 @@ export class PoliceCar {
       while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
       
       const steering = Math.sign(angleDiff) * Math.min(1, Math.abs(angleDiff) * 3);
-      
       this.heading += steering * this.turnSpeed * dt;
-      this.mesh.rotationQuaternion = Quaternion.RotationAxis(Vector3.Up(), this.heading);
-
       this.speed = Math.min(this.speed, this.maxSpeed);
-
       this.velocity = this.forward.scale(this.speed);
       
       const moveVector = this.velocity.scale(dt);
       moveVector.y = 0; // Gravity
       this.mesh.moveWithCollisions(moveVector);
-      this.mesh.position.y = 0.4;
+
+      const terrainInfo = getTerrainSlopeAngles(this.mesh.position.x, this.mesh.position.z, this.heading);
+      this.mesh.position.y = terrainInfo.height + 0.4;
+
+      const targetRotation = Quaternion.RotationYawPitchRoll(this.heading, -terrainInfo.pitch, terrainInfo.roll);
+      if (this.mesh.rotationQuaternion) {
+        Quaternion.SlerpToRef(this.mesh.rotationQuaternion, targetRotation, Math.min(1, dt * 15), this.mesh.rotationQuaternion);
+      } else {
+        this.mesh.rotationQuaternion = targetRotation;
+      }
+
       if (this.modelWrapper && this.mesh.rotationQuaternion) {
         this.modelWrapper.position.copyFrom(this.mesh.position).addInPlace(new Vector3(0, -0.4, 0));
         this.modelWrapper.rotationQuaternion = this.mesh.rotationQuaternion;
