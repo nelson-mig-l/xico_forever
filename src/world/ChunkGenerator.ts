@@ -272,6 +272,7 @@ export class ChunkGenerator {
     // Ensure all child meshes have collisions disabled as templates
     root.getChildMeshes().forEach(m => {
       m.checkCollisions = false;
+      m.receiveShadows = true;
     });
 
     return root;
@@ -295,6 +296,7 @@ export class ChunkGenerator {
           // Apply the shared building material with the correct colormap texture
           result.meshes.forEach(m => {
             m.checkCollisions = false;
+            m.receiveShadows = true;
             m.material = this.materials.building;
           });
 
@@ -733,7 +735,9 @@ export class ChunkGenerator {
                         // decorative sub-meshes (see comment there for why).
                         buildingClone.getChildMeshes().forEach((child: AbstractMesh) => {
                             child.checkCollisions = false;
-                            child.receiveShadows = true;
+                            if (child.getClassName() !== "InstancedMesh") {
+                                child.receiveShadows = true;
+                            }
                             child.material = this.materials.building;
                         });
 
