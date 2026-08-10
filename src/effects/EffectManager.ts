@@ -223,6 +223,8 @@ export class EffectManager {
   private skidOsc1: OscillatorNode | null = null;
   private skidOsc2: OscillatorNode | null = null;
   private skidOscGain: GainNode | null = null;
+  private skidChatterLfo: OscillatorNode | null = null;
+  private skidTremoloLfo: OscillatorNode | null = null;
   private skidActive: boolean = false;
 
   // Engine Sound Nodes
@@ -270,7 +272,7 @@ export class EffectManager {
     // Harmonic / Exhaust Oscillator (Square with detune)
     this.engineOsc2 = ctx.createOscillator();
     this.engineOsc2.type = "square";
-    this.engineOsc2.frequency.setValueAtTime(67.5, ctx.currentTime);
+    this.engineOsc2.frequency.setValueAtTime(33.75, ctx.currentTime);
 
     const osc2Gain = ctx.createGain();
     osc2Gain.gain.setValueAtTime(0.2, ctx.currentTime);
@@ -348,7 +350,7 @@ export class EffectManager {
         this.engineOsc1.frequency.setTargetAtTime(baseFreq, now, 0.04);
       }
       if (this.engineOsc2) {
-        this.engineOsc2.frequency.setTargetAtTime(baseFreq * 1.5, now, 0.04);
+        this.engineOsc2.frequency.setTargetAtTime(baseFreq * 0.75, now, 0.04);
       }
       if (this.engineSubOsc) {
         this.engineSubOsc.frequency.setTargetAtTime(baseFreq * 0.5, now, 0.04);
@@ -360,10 +362,10 @@ export class EffectManager {
         this.engineFilter.frequency.setTargetAtTime(cutoffFreq, now, 0.04);
       }
 
-      // Volume scaling: idle volume around 0.08, up to 0.24 at full speed & throttle
-      let targetVolume = 0.08 + normalizedSpeed * 0.12;
+      // Volume scaling: idle volume around 0.04, up to 0.12 at full speed & throttle
+      let targetVolume = 0.04 + normalizedSpeed * 0.06;
       if (throttleLoad > 0) {
-        targetVolume += throttleLoad * 0.06;
+        targetVolume += throttleLoad * 0.03;
       } else if (throttleLoad < 0) {
         targetVolume *= 0.8;
       }
@@ -399,50 +401,75 @@ export class EffectManager {
     this.skidNoiseSource.buffer = buffer;
     this.skidNoiseSource.loop = true;
 
-    // Filter A: Mid band asphalt scrub
+    // Real tire squeal has its spectral peak around 500-1500Hz (the stick-slip vibration
+    // between rubber and road, per acoustic measurements of slip-angle squeal) — not up in
+    // "musical tone" territory. Filter A shapes the broad scrub texture; filter B carves a
+    // narrower resonant peak inside that same band for the squeal's tonal body.
     this.skidFilterAsphalt = ctx.createBiquadFilter();
     this.skidFilterAsphalt.type = "bandpass";
-    this.skidFilterAsphalt.frequency.setValueAtTime(1400, ctx.currentTime);
-    this.skidFilterAsphalt.Q.setValueAtTime(3.5, ctx.currentTime);
+    this.skidFilterAsphalt.frequency.setValueAtTime(700, ctx.currentTime);
+    this.skidFilterAsphalt.Q.setValueAtTime(1.5, ctx.currentTime);
 
-    // Filter B: Resonant high frequency tire screech
     this.skidFilterScreech = ctx.createBiquadFilter();
     this.skidFilterScreech.type = "bandpass";
-    this.skidFilterScreech.frequency.setValueAtTime(2800, ctx.currentTime);
-    this.skidFilterScreech.Q.setValueAtTime(12.0, ctx.currentTime);
+    this.skidFilterScreech.frequency.setValueAtTime(1100, ctx.currentTime);
+    this.skidFilterScreech.Q.setValueAtTime(9.0, ctx.currentTime);
 
     const noiseGain = ctx.createGain();
-    noiseGain.gain.setValueAtTime(0.5, ctx.currentTime);
+    noiseGain.gain.setValueAtTime(0.6, ctx.currentTime);
 
     this.skidNoiseSource.connect(this.skidFilterAsphalt);
     this.skidFilterAsphalt.connect(this.skidFilterScreech);
     this.skidFilterScreech.connect(noiseGain);
     noiseGain.connect(this.skidGain);
 
-    // 2. Dual Tonal Oscillators for High Pitch Rubber Screech Squeal
+    // 2. Tonal squeal. The two oscillators are detuned CLOSE together (~2%, not a musical
+    // interval) so they beat against each other, and a fast LFO frequency-modulates both —
+    // this stick-slip "chatter" is what actually reads as rubber rather than a synth chord;
+    // a slower LFO adds a matching amplitude wobble.
     this.skidOsc1 = ctx.createOscillator();
     this.skidOsc1.type = "sawtooth";
-    this.skidOsc1.frequency.setValueAtTime(2100, ctx.currentTime);
+    this.skidOsc1.frequency.setValueAtTime(950, ctx.currentTime);
 
     this.skidOsc2 = ctx.createOscillator();
-    this.skidOsc2.type = "sine";
-    this.skidOsc2.frequency.setValueAtTime(2900, ctx.currentTime);
+    this.skidOsc2.type = "sawtooth";
+    this.skidOsc2.frequency.setValueAtTime(970, ctx.currentTime);
 
     this.skidOscGain = ctx.createGain();
-    this.skidOscGain.gain.setValueAtTime(0.12, ctx.currentTime);
+    this.skidOscGain.gain.setValueAtTime(0.1, ctx.currentTime);
 
-    const oscHighpass = ctx.createBiquadFilter();
-    oscHighpass.type = "highpass";
-    oscHighpass.frequency.setValueAtTime(1200, ctx.currentTime);
+    const oscBandpass = ctx.createBiquadFilter();
+    oscBandpass.type = "bandpass";
+    oscBandpass.frequency.setValueAtTime(1200, ctx.currentTime);
+    oscBandpass.Q.setValueAtTime(1.2, ctx.currentTime);
 
-    this.skidOsc1.connect(oscHighpass);
-    this.skidOsc2.connect(oscHighpass);
-    oscHighpass.connect(this.skidOscGain);
+    this.skidChatterLfo = ctx.createOscillator();
+    this.skidChatterLfo.type = "sine";
+    this.skidChatterLfo.frequency.setValueAtTime(20, ctx.currentTime);
+    const chatterDepth = ctx.createGain();
+    chatterDepth.gain.setValueAtTime(40, ctx.currentTime); // +/-40Hz wobble on the squeal pitch
+    this.skidChatterLfo.connect(chatterDepth);
+    chatterDepth.connect(this.skidOsc1.frequency);
+    chatterDepth.connect(this.skidOsc2.frequency);
+
+    this.skidTremoloLfo = ctx.createOscillator();
+    this.skidTremoloLfo.type = "sine";
+    this.skidTremoloLfo.frequency.setValueAtTime(7, ctx.currentTime);
+    const tremoloDepth = ctx.createGain();
+    tremoloDepth.gain.setValueAtTime(0.03, ctx.currentTime); // small: stays positive against the 0.1 base gain
+    this.skidTremoloLfo.connect(tremoloDepth);
+    tremoloDepth.connect(this.skidOscGain.gain);
+
+    this.skidOsc1.connect(oscBandpass);
+    this.skidOsc2.connect(oscBandpass);
+    oscBandpass.connect(this.skidOscGain);
     this.skidOscGain.connect(this.skidGain);
 
     this.skidNoiseSource.start();
     this.skidOsc1.start();
     this.skidOsc2.start();
+    this.skidChatterLfo.start();
+    this.skidTremoloLfo.start();
 
     this.skidActive = true;
   }
@@ -470,21 +497,25 @@ export class EffectManager {
       const targetGain = Math.min(0.3, 0.06 + intensity * 0.18 + speedRatio * 0.06);
       this.skidGain.gain.setTargetAtTime(targetGain, now, 0.03);
 
-      // Pitch / frequency calculation
-      const baseFreq = 1600 + speedRatio * 900 + intensity * 600;
-      const screechFreq = baseFreq + 800 + (Math.random() - 0.5) * 150;
+      // Pitch / frequency calculation. Real squeal peaks in the 500-1500Hz band; a bigger
+      // slip angle (here approximated by drift intensity) raises the pitch AND makes the
+      // stick-slip chatter faster/more agitated, so the chatter LFO rate scales with it too.
+      const squealBase = 650 + speedRatio * 250 + intensity * 300;
 
       if (this.skidFilterAsphalt) {
-        this.skidFilterAsphalt.frequency.setTargetAtTime(1000 + speedRatio * 700, now, 0.04);
+        this.skidFilterAsphalt.frequency.setTargetAtTime(500 + speedRatio * 250, now, 0.04);
       }
       if (this.skidFilterScreech) {
-        this.skidFilterScreech.frequency.setTargetAtTime(screechFreq, now, 0.04);
+        this.skidFilterScreech.frequency.setTargetAtTime(squealBase + 150 + (Math.random() - 0.5) * 60, now, 0.04);
       }
       if (this.skidOsc1) {
-        this.skidOsc1.frequency.setTargetAtTime(1800 + speedRatio * 800 + intensity * 500, now, 0.04);
+        this.skidOsc1.frequency.setTargetAtTime(squealBase, now, 0.04);
       }
       if (this.skidOsc2) {
-        this.skidOsc2.frequency.setTargetAtTime(2600 + speedRatio * 1000 + intensity * 600, now, 0.04);
+        this.skidOsc2.frequency.setTargetAtTime(squealBase * 1.02, now, 0.04); // keep the beat-detune ratio
+      }
+      if (this.skidChatterLfo) {
+        this.skidChatterLfo.frequency.setTargetAtTime(15 + intensity * 25, now, 0.06);
       }
     }
   }
