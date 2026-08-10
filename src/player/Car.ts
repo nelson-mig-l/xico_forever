@@ -135,9 +135,12 @@ export class Car {
     return new Vector3(Math.cos(this.heading), 0, -Math.sin(this.heading));
   }
 
+  public currentThrottle: number = 0;
+
   applyInputs(throttle: number, steering: number, dt: number) {
     if (this.isCrashed) return;
 
+    this.currentThrottle = throttle;
     this.speed += throttle * this.acceleration * dt;
     this.speed = Math.max(-this.maxSpeed / 2, Math.min(this.speed, this.maxSpeed));
     
@@ -158,6 +161,8 @@ export class Car {
         this.trailRight.stop();
         this.driftDustLeft.stop();
         this.driftDustRight.stop();
+        this.effectManager.updateSkidSound(false);
+        this.effectManager.updateEngineSound(0, 0, true);
         return;
     }
 
@@ -196,6 +201,9 @@ export class Car {
     this.isDrifting = lateralSpeed > 5.0 && Math.abs(this.speed) > 5;
     const isDrifting = this.isDrifting;
     
+    const driftIntensity = Math.min(1.0, Math.max(0, (lateralSpeed - 5.0) / 10.0));
+    const speedRatio = Math.min(1.0, Math.abs(this.speed) / this.maxSpeed);
+
     if (isDrifting) {
         this.trailLeft.start();
         this.trailRight.start();
@@ -212,13 +220,8 @@ export class Car {
         }
     }
 
-    if (isDrifting) {
-        this.skidSoundTimer += dt;
-        if (this.skidSoundTimer > 0.1) {
-            this.skidSoundTimer = 0;
-            this.effectManager.playSkidSound();
-        }
-    }
+    this.effectManager.updateSkidSound(isDrifting, driftIntensity, speedRatio);
+    this.effectManager.updateEngineSound(speedRatio, this.currentThrottle, this.isCrashed);
   }
 
   unstuck() {
@@ -248,6 +251,8 @@ export class Car {
 
   crash() {
     this.isCrashed = true;
+    this.effectManager.updateSkidSound(false);
+    this.effectManager.updateEngineSound(0, 0, true);
     const mat = this.mesh.material as StandardMaterial;
     mat.diffuseColor = new Color3(0.1, 0.1, 0.1);
     this.mesh.getChildMeshes().forEach(child => {
