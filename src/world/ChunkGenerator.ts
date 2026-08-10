@@ -18,7 +18,7 @@ Object.defineProperty(GLTFFileLoader.prototype, "skipMaterials", {
 export class ChunkGenerator {
   private chunkSize = 50;
   private renderDistance = 2; // chunks
-  private activeChunks: Map<string, TransformNode> = new Map();
+  public activeChunks: Map<string, TransformNode> = new Map();
   private materials: Record<string, StandardMaterial> = {};
   private isDisposed = false;
 

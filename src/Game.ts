@@ -7,6 +7,7 @@ import { CarController } from "./player/CarController";
 import { PoliceManager } from "./ai/PoliceManager";
 import { ChunkGenerator } from "./world/ChunkGenerator";
 import { EffectManager } from "./effects/EffectManager";
+import { MiniMapRenderer } from "./ui/MiniMapRenderer";
 
 export class Game {
   public engine: Engine;
@@ -19,6 +20,7 @@ export class Game {
   public policeManager: PoliceManager;
   public chunkGenerator: ChunkGenerator;
   public effectManager: EffectManager;
+  public miniMapRenderer: MiniMapRenderer = new MiniMapRenderer();
 
   public score: number = 0;
   public isGameOver: boolean = false;
@@ -67,6 +69,10 @@ export class Game {
     window.addEventListener("resize", this.boundResize);
   }
 
+  public setMiniMapCanvas(miniMapCanvas: HTMLCanvasElement | null) {
+    this.miniMapRenderer.setCanvas(miniMapCanvas);
+  }
+
   private boundResize: () => void;
 
   start() {
@@ -81,6 +87,7 @@ export class Game {
     this.camera.update(dt);
     this.policeManager.update(dt);
     this.chunkGenerator.update();
+    this.miniMapRenderer.render(this.car, this.policeManager, this.chunkGenerator);
 
     this.score += dt * 10;
     this.setScore(

@@ -17,6 +17,9 @@ export default function App() {
   const speedNumberRef = useRef<HTMLSpanElement>(null);
   const speedGaugeRef = useRef<SVGCircleElement>(null);
 
+  // MiniMap element ref
+  const miniMapCanvasRef = useRef<HTMLCanvasElement>(null);
+
   useEffect(() => {
     if (canvasRef.current) {
       const game = new Game(canvasRef.current, (score, policeCount, destroyedCount, policeData, lostCount, speed, maxSpeed, isDrifting, fps) => {
@@ -54,6 +57,11 @@ export default function App() {
         setGameOver(state);
         setFinalScore(score);
       });
+
+      if (miniMapCanvasRef.current) {
+        game.setMiniMapCanvas(miniMapCanvasRef.current);
+      }
+
       game.start();
 
       return () => {
@@ -117,9 +125,24 @@ export default function App() {
         </div>
       )}
       
-      <div className="absolute bottom-4 left-4 text-white/50 font-mono text-sm pointer-events-none flex flex-col gap-1">
-        <div>Controls: WASD / Arrows</div>
-        <div>R: Unstuck / Respawn</div>
+      {/* Mini Map HUD in Lower Left */}
+      <div className="absolute bottom-4 left-4 z-10 pointer-events-none flex flex-col items-start gap-2 select-none">
+        <div className="relative w-[180px] h-[180px] rounded-full p-1 bg-slate-950/85 border-2 border-slate-700/60 shadow-2xl backdrop-blur-md flex items-center justify-center overflow-hidden">
+          <canvas 
+            ref={miniMapCanvasRef} 
+            className="w-[172px] h-[172px] rounded-full"
+          />
+          {/* MiniMap Title overlay badge */}
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 bg-black/60 px-2 py-0.5 rounded-full border border-sky-500/30 text-[9px] font-mono font-bold text-sky-400 tracking-wider uppercase">
+            GPS NAV
+          </div>
+        </div>
+
+        {/* Controls Info badge below MiniMap */}
+        <div className="text-white/60 font-mono text-xs bg-black/60 px-2.5 py-1.5 rounded-md border border-white/10 backdrop-blur-sm flex flex-col gap-0.5 shadow-lg">
+          <div><span className="text-sky-400 font-bold">WASD / Arrows</span> Drive</div>
+          <div><span className="text-amber-400 font-bold">R</span> Unstuck / Respawn</div>
+        </div>
       </div>
 
       {/* High-fidelity HUD Speedometer */}
