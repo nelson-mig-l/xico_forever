@@ -17,12 +17,15 @@ export default function App() {
   const speedNumberRef = useRef<HTMLSpanElement>(null);
   const speedGaugeRef = useRef<SVGCircleElement>(null);
 
+  // Chunk display element ref
+  const chunkNameRef = useRef<HTMLDivElement>(null);
+
   // MiniMap element ref
   const miniMapCanvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (canvasRef.current) {
-      const game = new Game(canvasRef.current, (score, policeCount, destroyedCount, policeData, lostCount, speed, maxSpeed, isDrifting, fps) => {
+      const game = new Game(canvasRef.current, (score, policeCount, destroyedCount, policeData, lostCount, speed, maxSpeed, isDrifting, fps, chunkName) => {
         if (scoreRef.current) {
           scoreRef.current.innerText = `SCORE: ${Math.floor(score)}`;
         }
@@ -38,7 +41,10 @@ export default function App() {
         if (fpsRef.current) {
           fpsRef.current.innerText = `${Math.round(fps)} FPS`;
         }
-          setPoliceData(policeData);
+        if (chunkNameRef.current) {
+          chunkNameRef.current.innerText = `CHUNK: ${chunkName}`;
+        }
+        setPoliceData(policeData);
 
         // Speedometer UI Updates
         const absSpeed = Math.abs(speed);
@@ -143,6 +149,14 @@ export default function App() {
           <div><span className="text-sky-400 font-bold">WASD / Arrows</span> Drive</div>
           <div><span className="text-amber-400 font-bold">R</span> Unstuck / Respawn</div>
         </div>
+      </div>
+
+      {/* Bottom Center Chunk Indicator Badge */}
+      <div 
+        ref={chunkNameRef} 
+        className="absolute bottom-4 left-1/2 -translate-x-1/2 text-sky-400 font-mono text-sm font-bold select-none drop-shadow-md z-10 pointer-events-none bg-black/75 px-4 py-2 rounded-full border border-sky-500/40 backdrop-blur-md shadow-2xl tracking-wider uppercase flex items-center gap-2"
+      >
+        CHUNK: chunk_0,0
       </div>
 
       {/* High-fidelity HUD Speedometer */}

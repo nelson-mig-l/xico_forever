@@ -36,7 +36,8 @@ export class Game {
       speed: number,
       maxSpeed: number,
       isDrifting: boolean,
-      fps: number
+      fps: number,
+      chunkName: string
     ) => void,
     private setGameOver: (state: boolean, finalScore: number) => void
   ) {
@@ -99,7 +100,8 @@ export class Game {
       this.car.speed,
       this.car.maxSpeed,
       this.car.isDrifting,
-      this.engine.getFps()
+      this.engine.getFps(),
+      this.chunkGenerator.getCurrentChunkName()
     );
   }
 

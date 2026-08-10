@@ -397,6 +397,14 @@ export class ChunkGenerator {
     parent.rotation.y = rotationY;
   }
 
+  getCurrentChunkName(): string {
+    if (!this.target || !this.target.mesh) return "chunk_0,0";
+    const targetPos = this.target.mesh.position;
+    const currentChunkX = Math.floor(targetPos.x / this.chunkSize);
+    const currentChunkZ = Math.floor(targetPos.z / this.chunkSize);
+    return `chunk_${currentChunkX},${currentChunkZ}`;
+  }
+
   update() {
     const targetPos = this.target.mesh.position;
     const currentChunkX = Math.floor(targetPos.x / this.chunkSize);
