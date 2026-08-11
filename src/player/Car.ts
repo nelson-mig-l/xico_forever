@@ -26,6 +26,7 @@ export class Car {
   private skidSoundTimer: number = 0;
 
   constructor(public scene: Scene, private effectManager: EffectManager) {
+    this.effectManager.setPlayerCar(this);
     this.mesh = MeshBuilder.CreateBox("car", { width: 1.6, height: 0.8, depth: 3.2 }, scene);
     this.mesh.position.set(25, getTerrainHeight(25, 25) + 0.4, 25);
     

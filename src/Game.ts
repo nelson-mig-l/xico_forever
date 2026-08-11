@@ -50,6 +50,7 @@ export class Game {
     this.world = new World(this.scene);
     this.lighting = new Lighting(this.scene);
     this.car = new Car(this.scene, this.effectManager);
+    this.effectManager.setPlayerCar(this.car);
     this.carController = new CarController(this.car);
     this.camera = new Camera(this.scene, this.car);
     this.policeManager = new PoliceManager(this.scene, this.car, this);

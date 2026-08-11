@@ -51,7 +51,7 @@ export class EffectManager {
 
     // Flash light
     this.createFlash(position);
-    this.playSound("explosion");
+    this.playSound("explosion", position);
 
     // Spawn some physical debris
     for (let i=0; i<8; i++) {
@@ -87,7 +87,7 @@ export class EffectManager {
         particleSystem.dispose(false);
     });
     particleSystem.start();
-    this.playSound("crash");
+    this.playSound("crash", position);
   }
 
   createDust(position: Vector3) {
@@ -474,7 +474,36 @@ export class EffectManager {
     this.skidActive = true;
   }
 
-  public updateSkidSound(isDrifting: boolean, intensity: number = 0.5, speedRatio: number = 0.5) {
+  private playerCar: { mesh: Mesh } | null = null;
+
+  public setPlayerCar(car: { mesh: Mesh }) {
+    this.playerCar = car;
+  }
+
+  private calculateDistanceVolume(position?: Vector3): number {
+    if (!position) return 1.0;
+
+    let playerPos: Vector3 | null = null;
+    if (this.playerCar && this.playerCar.mesh) {
+      playerPos = this.playerCar.mesh.position;
+    }
+
+    if (!playerPos) return 1.0;
+
+    const dist = Vector3.Distance(position, playerPos);
+
+    const refDistance = 5;   // Full volume within 5 units
+    const maxDistance = 120; // Completely inaudible beyond 120 units
+
+    if (dist <= refDistance) return 1.0;
+    if (dist >= maxDistance) return 0.0;
+
+    const normalized = (dist - refDistance) / (maxDistance - refDistance);
+    const factor = Math.max(0, 1 - normalized);
+    return factor * factor; // Quadratic roll-off for realistic 3D sound attenuation
+  }
+
+  public updateSkidSound(isDrifting: boolean, intensity: number = 0.5, speedRatio: number = 0.5, position?: Vector3) {
     if (!isDrifting) {
       if (this.skidGain && this.audioCtx) {
         this.skidGain.gain.setTargetAtTime(0, this.audioCtx.currentTime, 0.05);
@@ -492,9 +521,10 @@ export class EffectManager {
 
     if (this.skidGain && this.audioCtx) {
       const now = this.audioCtx.currentTime;
+      const volumeScale = this.calculateDistanceVolume(position);
 
-      // Target volume based on drift intensity & speed
-      const targetGain = Math.min(0.3, 0.06 + intensity * 0.18 + speedRatio * 0.06);
+      // Target volume based on drift intensity & speed scaled by distance
+      const targetGain = Math.min(0.3, (0.06 + intensity * 0.18 + speedRatio * 0.06) * volumeScale);
       this.skidGain.gain.setTargetAtTime(targetGain, now, 0.03);
 
       // Pitch / frequency calculation. Real squeal peaks in the 500-1500Hz band; a bigger
@@ -520,13 +550,16 @@ export class EffectManager {
     }
   }
 
-  private playSound(type: "explosion" | "crash" | "skid") {
+  public playSound(type: "explosion" | "crash" | "skid", position?: Vector3) {
     if (!this.audioCtx) {
         this.audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
     if (this.audioCtx.state === 'suspended') {
         this.audioCtx.resume();
     }
+
+    const volumeScale = this.calculateDistanceVolume(position);
+    if (volumeScale <= 0.001) return;
 
     const t = this.audioCtx.currentTime;
     const osc = this.audioCtx.createOscillator();
@@ -554,8 +587,8 @@ export class EffectManager {
         noise.connect(filter);
         filter.connect(gain);
         
-        gain.gain.setValueAtTime(1, t);
-        gain.gain.exponentialRampToValueAtTime(0.01, t + 1);
+        gain.gain.setValueAtTime(1 * volumeScale, t);
+        gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, 0.01 * volumeScale), t + 1);
         
         noise.start(t);
         noise.stop(t + 1);
@@ -565,17 +598,17 @@ export class EffectManager {
         osc.frequency.setValueAtTime(150, t);
         osc.frequency.exponentialRampToValueAtTime(40, t + 0.3);
         
-        gain.gain.setValueAtTime(0.5, t);
-        gain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+        gain.gain.setValueAtTime(0.5 * volumeScale, t);
+        gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, 0.01 * volumeScale), t + 0.3);
         
         osc.start(t);
         osc.stop(t + 0.3);
     } else if (type === "skid") {
-        this.updateSkidSound(true, 0.7, 0.7);
+        this.updateSkidSound(true, 0.7, 0.7, position);
     }
   }
 
-  playSkidSound() {
-    this.updateSkidSound(true, 0.7, 0.7);
+  playSkidSound(position?: Vector3) {
+    this.updateSkidSound(true, 0.7, 0.7, position);
   }
 }
